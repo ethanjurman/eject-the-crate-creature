@@ -16,6 +16,7 @@
   "heavilyDamage": "IS HEAVILY DAMAGED",
   "ejectingEngaged": "EJECTING MODE ENGAGED",
   "ejectingDisengaged": "EJECTING MODE DISENGAGED",
+  "ejectingFailed": "FAILED EJECTING, CONTAINMENT UNIT TOO HEAVILY DAMAGED",
   "isEjected": "IS EJECTED",
   "anomolyStillActive": "ANOMOLY STILL ACTIVE",
   "totalFine": "YOU HAVE BEEN FINED A TOTAL OF",

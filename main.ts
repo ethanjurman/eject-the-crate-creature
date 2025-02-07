@@ -4,6 +4,8 @@ const PX_SIZE = 96;
 const W = 9;
 const H = 4;
 
+const HEAVY_DAMAGE = 255 * 50;
+
 export function angleTowards(
   A: { x: number; y: number },
   B: { x: number; y: number },
@@ -55,6 +57,24 @@ const containers = [
   ["KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK", "KeyL"],
   ["KeyZ", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM", "Comma", "Period"],
 ];
+
+function containerKeyToXY(key: string) {
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (containers[y][x] === key) {
+        return { x, y };
+      }
+    }
+  }
+  return null;
+}
+
+function XYToContainerKey(x: number, y: number) {
+  if (x > 8 || y > 3) {
+    return "";
+  }
+  return containers[y][x];
+}
 
 let frame = 0;
 
@@ -119,6 +139,28 @@ const executeAction = (action: Action) => {
   return false;
 };
 
+function attemptToEject(code: string) {
+  if (gameState.cargo[code]?.ejected) {
+    return { result: false, reason: "ejected" };
+  }
+  if (gameState.cargo[code]?.damage > HEAVY_DAMAGE) {
+    return { result: false, reason: "damage" };
+  }
+  gameState.cargo[code] = {
+    ...gameState.cargo[code],
+    ejected: true,
+  };
+  gameState.ejecting = false;
+  addUnqueuedAction({
+    type: "text",
+    delay: 0,
+    data: {
+      text: "EJECTING MODE DISENGAGED",
+    },
+  });
+  return { result: true };
+}
+
 function gameLoop() {
   // execute queued actions
   gameState.queuedActions = gameState.queuedActions.map((action, index) => {
@@ -174,6 +216,9 @@ document.onkeydown = function (e) {
   }
   keysPressed.add(e.code);
   gameState.radarKey = e.code;
+  if (gameState.ejecting) {
+    attemptToEject(e.code);
+  }
 };
 
 document.onkeyup = function (e) {
@@ -208,19 +253,24 @@ function drawContainers() {
   ctx.beginPath();
   for (let row = 0; row < H; row++) {
     for (let col = 0; col < W; col++) {
-      const cargoDamage = gameState.cargo[`${col}-${row}`]?.damage;
+      const cargoKey = XYToContainerKey(col, row);
+      const cargoDamage = gameState.cargo[cargoKey]?.damage;
       const width = PX_SIZE;
       const height = PX_SIZE;
       const x = PX_SIZE * col;
       const y = PX_SIZE * row;
       ctx.rect(x, y, width, height);
-      if (cargoDamage) {
+      if (gameState.cargo[cargoKey]?.ejected) {
+        ctx.fillStyle = `rgb(0,0,255)`;
+        ctx.fillRect(x, y, width, height);
+      }
+      if (cargoDamage && !gameState.cargo[cargoKey].ejected) {
         ctx.fillStyle = `rgb(${Math.min(cargoDamage / 50, 255)}, 0, 0)`;
         ctx.fillRect(x, y, width, height);
       }
       if (gameState.radarKey === containers[row][col]) {
         ctx.fillStyle = "rgb(47, 255, 0)";
-        ctx.fillRect(x, y, width, height);
+        ctx.fillRect(x + 10, y + 10, width - 20, height - 20);
       }
     }
   }
@@ -250,7 +300,10 @@ function updateCreature() {
     creature.deltaX = (Math.random() - 0.5) / 50;
   }
   const damage = creature.behavior === "ATTACK" ? 10 : 5;
-  const cargoKey = `${Math.floor(creature.x)}-${Math.floor(creature.y)}`;
+  const cargoKey = XYToContainerKey(
+    Math.floor(creature.x),
+    Math.floor(creature.y)
+  );
   if (!gameState.cargo[cargoKey]) {
     gameState.cargo[cargoKey] = {
       damage,
@@ -287,7 +340,7 @@ function getKeyLocation() {
 function playRadarSound() {
   const keyLocation = getKeyLocation();
   const { creature } = gameState;
-  if (gameState.radarKey && !gameState.ejecting && keyLocation) {
+  if (gameState.radarKey && gameState.ejecting && keyLocation) {
     const { x: x1, y: y1 } = keyLocation;
     const { x: x2, y: y2 } = creature;
     const distance = Math.sqrt(
