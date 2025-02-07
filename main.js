@@ -233,12 +233,20 @@ function drawCreature() {
     ctx.fill();
 }
 function updateCreature() {
+    var _a, _b;
     const { creature } = gameState;
     // invert delta if hitting a wall
     if (creature.x + creature.deltaX < 0 || creature.x + creature.deltaX > W) {
         creature.deltaX = -creature.deltaX;
     }
     if (creature.y + creature.deltaY < 0 || creature.y + creature.deltaY > H) {
+        creature.deltaY = -creature.deltaY;
+    }
+    // invert delta if hitting a containment that's ejected
+    if ((_a = gameState.cargo[XYToContainerKey(Math.floor(creature.x + creature.deltaX), Math.floor(creature.y))]) === null || _a === void 0 ? void 0 : _a.ejected) {
+        creature.deltaX = -creature.deltaX;
+    }
+    if ((_b = gameState.cargo[XYToContainerKey(Math.floor(creature.x), Math.floor(creature.y + creature.deltaY))]) === null || _b === void 0 ? void 0 : _b.ejected) {
         creature.deltaY = -creature.deltaY;
     }
     if (creature.behavior === "ATTACK") {

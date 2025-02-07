@@ -295,6 +295,28 @@ function updateCreature() {
   if (creature.y + creature.deltaY < 0 || creature.y + creature.deltaY > H) {
     creature.deltaY = -creature.deltaY;
   }
+  // invert delta if hitting a containment that's ejected
+  if (
+    gameState.cargo[
+      XYToContainerKey(
+        Math.floor(creature.x + creature.deltaX),
+        Math.floor(creature.y)
+      )
+    ]?.ejected
+  ) {
+    creature.deltaX = -creature.deltaX;
+  }
+  if (
+    gameState.cargo[
+      XYToContainerKey(
+        Math.floor(creature.x),
+        Math.floor(creature.y + creature.deltaY)
+      )
+    ]?.ejected
+  ) {
+    creature.deltaY = -creature.deltaY;
+  }
+
   if (creature.behavior === "ATTACK") {
     creature.deltaY = (Math.random() - 0.5) / 50;
     creature.deltaX = (Math.random() - 0.5) / 50;
