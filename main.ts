@@ -1,5 +1,9 @@
 import { Action, GameState } from "./types";
 
+const PX_SIZE = 96;
+const W = 9;
+const H = 4;
+
 export function angleTowards(
   A: { x: number; y: number },
   B: { x: number; y: number },
@@ -32,8 +36,8 @@ const audio = document.getElementById("beep") as HTMLAudioElement;
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
-canvas.width = 480;
-canvas.height = 320;
+canvas.width = PX_SIZE * W;
+canvas.height = PX_SIZE * H;
 
 const containers = [
   [
@@ -68,8 +72,9 @@ let gameState: GameState = {
   radarKey: "",
   queuedActions: [],
   unqueuedActions: [],
-  cargo: [],
+  cargo: {},
   showCargos: true,
+  ejecting: false,
 };
 
 function addQueuedAction(action: Action) {
@@ -145,7 +150,7 @@ document.onkeydown = function (e) {
       "WE BELIEVE A CREATURE FROM CRATE X-7/2 WAS NOT PROPERLY CONTAINED IS NOW DESTROYING NEIGHBORING CARGO UNITS.",
       "THIS IS AN UNACCEPTABLE LOSS FOR THE CORPERATION.",
       "THERE ARE 36 CONTAINERS IN THE CARGO BAY. THEY ARE LABELED AND LOCATED BASED ON THE KEYBOARD CONFIGURATION IN FRONT OF YOU.",
-      "1 THROUGH 9 TO Z THROUGH PERIOD ARE ALL VALID CARGO KEYS.",
+      "'1' THROUGH '9' TO 'Z' THROUGH 'PERIOD' ARE ALL VALID CARGO KEYS.",
       "PRESS ANY CARGO KEY ON YOUR KEYBOARD TO ACTIVATE ITS DOPPLER-RADAR FROM ITS RESPECTIVE LOCATION.",
       "PRESS SHIFT PLUS ANY CARGO KEY TO EJECT THE CONTAINER INTO SPACE.",
       "IDENTIFY THE CREATURES LOCATION.",
@@ -173,23 +178,46 @@ document.onkeydown = function (e) {
 
 document.onkeyup = function (e) {
   keysPressed.delete(e.code);
+  if (e.code === "ShiftLeft" && !gameState.ejecting) {
+    addUnqueuedAction({
+      type: "text",
+      data: { text: "EJECTING MODE ENGAGED" },
+      delay: 0,
+    });
+    gameState.ejecting = true;
+    return;
+  }
+  if (e.code === "ShiftLeft" && gameState.ejecting) {
+    addUnqueuedAction({
+      type: "text",
+      data: { text: "EJECTING MODE DISENGAGED" },
+      delay: 0,
+    });
+    gameState.ejecting = false;
+    return;
+  }
   if (gameState.radarKey === e.code) {
     gameState.radarKey = [...keysPressed][0] || "";
   }
 };
 
 function drawContainers() {
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = 4;
   ctx.strokeStyle = "rgb(47, 255, 0)";
 
   ctx.beginPath();
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 9; col++) {
-      const width = 20;
-      const height = 20;
-      const x = 10 + 48 * col;
-      const y = 10 + 48 * row;
+  for (let row = 0; row < H; row++) {
+    for (let col = 0; col < W; col++) {
+      const cargoDamage = gameState.cargo[`${col}-${row}`]?.damage;
+      const width = PX_SIZE;
+      const height = PX_SIZE;
+      const x = PX_SIZE * col;
+      const y = PX_SIZE * row;
       ctx.rect(x, y, width, height);
+      if (cargoDamage) {
+        ctx.fillStyle = `rgb(${Math.min(cargoDamage / 50, 255)}, 0, 0)`;
+        ctx.fillRect(x, y, width, height);
+      }
       if (gameState.radarKey === containers[row][col]) {
         ctx.fillStyle = "rgb(47, 255, 0)";
         ctx.fillRect(x, y, width, height);
@@ -200,10 +228,10 @@ function drawContainers() {
 }
 
 function drawCreature() {
-  const x = 10 + 48 * gameState.creature.x + 10;
-  const y = 10 + 48 * gameState.creature.y + 10;
+  const x = PX_SIZE * gameState.creature.x;
+  const y = PX_SIZE * gameState.creature.y;
   ctx.beginPath();
-  ctx.arc(x, y, 4, 0, 2 * Math.PI);
+  ctx.arc(x, y, PX_SIZE / 12, 0, 2 * Math.PI);
   ctx.fillStyle = "red";
   ctx.fill();
 }
@@ -211,20 +239,33 @@ function drawCreature() {
 function updateCreature() {
   const { creature } = gameState;
   // invert delta if hitting a wall
-  if (creature.x + creature.deltaX < 0 || creature.x + creature.deltaX > 8) {
-    creature.deltaX = -creature.deltaX + (Math.random() - 0.5) / 100;
+  if (creature.x + creature.deltaX < 0 || creature.x + creature.deltaX > W) {
+    creature.deltaX = -creature.deltaX;
   }
-  if (creature.y + creature.deltaY < 0 || creature.y + creature.deltaY > 3) {
-    creature.deltaY = -creature.deltaY + (Math.random() - 0.5) / 100;
+  if (creature.y + creature.deltaY < 0 || creature.y + creature.deltaY > H) {
+    creature.deltaY = -creature.deltaY;
   }
   if (creature.behavior === "ATTACK") {
     creature.deltaY = (Math.random() - 0.5) / 50;
     creature.deltaX = (Math.random() - 0.5) / 50;
   }
+  const damage = creature.behavior === "ATTACK" ? 10 : 5;
+  const cargoKey = `${Math.floor(creature.x)}-${Math.floor(creature.y)}`;
+  if (!gameState.cargo[cargoKey]) {
+    gameState.cargo[cargoKey] = {
+      damage,
+      ejected: false,
+    };
+  } else {
+    gameState.cargo[cargoKey] = {
+      ...gameState.cargo[cargoKey],
+      damage: gameState.cargo[cargoKey].damage + damage,
+    };
+  }
 
   const newCreatureState: GameState["creature"] = {
-    x: Math.max(Math.min(creature.x + creature.deltaX, 8), 0),
-    y: Math.max(Math.min(creature.y + creature.deltaY, 3), 0),
+    x: Math.max(Math.min(creature.x + creature.deltaX, W), 0),
+    y: Math.max(Math.min(creature.y + creature.deltaY, H), 0),
     deltaX: creature.deltaX,
     deltaY: creature.deltaY,
     behavior: creature.behavior,
@@ -233,10 +274,10 @@ function updateCreature() {
 }
 
 function getKeyLocation() {
-  for (let col = 0; col < 9; col++) {
-    for (let row = 0; row < 4; row++) {
+  for (let col = 0; col < W; col++) {
+    for (let row = 0; row < H; row++) {
       if (gameState.radarKey === containers[row][col]) {
-        return { x: col, y: row };
+        return { x: col + 0.5, y: row + 0.5 };
       }
     }
   }
@@ -246,16 +287,14 @@ function getKeyLocation() {
 function playRadarSound() {
   const keyLocation = getKeyLocation();
   const { creature } = gameState;
-  if (gameState.radarKey && keyLocation) {
-    const distanceX = Math.abs(keyLocation.x - creature.x) / 8;
-    const distanceY = Math.abs(keyLocation.y - creature.y) / 3;
-    const diagonal = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
-    const diagonalMath = Math.pow(
-      Math.max(Math.min(Math.sqrt(Math.sqrt(diagonal)), 1), 0),
-      2
+  if (gameState.radarKey && !gameState.ejecting && keyLocation) {
+    const { x: x1, y: y1 } = keyLocation;
+    const { x: x2, y: y2 } = creature;
+    const distance = Math.sqrt(
+      Math.pow(x2 - x1, 2) / W + Math.pow(y2 - y1, 2) / H
     );
 
-    audio.volume = 1 - diagonalMath;
+    audio.volume = keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0;
 
     const angle =
       angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
@@ -264,7 +303,7 @@ function playRadarSound() {
     audio.playbackRate =
       creature.behavior === "RUN"
         ? Math.max(Math.PI / 2 - angle, 0.2)
-        : Math.max(Math.min(1.5 - diagonalMath, 2), 0.2);
+        : Math.max(Math.min(1.5 - distance, 2), 0.2);
 
     if (audio.paused) {
       audio.play();

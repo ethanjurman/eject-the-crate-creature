@@ -28,10 +28,13 @@ export type GameState = {
   queuedActions: Action[];
   // each unqueued action goes at the same time
   unqueuedActions: Action[];
-  cargo: {
-    key: string;
-    damage: number;
-    ejected: boolean;
-  }[];
+  cargo: Record<
+    string,
+    {
+      damage: number;
+      ejected: boolean;
+    }
+  >;
   showCargos: boolean;
+  ejecting: boolean;
 };
