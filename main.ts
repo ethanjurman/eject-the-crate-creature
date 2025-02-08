@@ -76,6 +76,17 @@ function XYToContainerKey(x: number, y: number) {
   return containers[y][x];
 }
 
+function getCargoAtXY(x: number, y: number) {
+  if (x > 8 || y > 3) {
+    return null;
+  }
+  if (x < 0 || y < 0) {
+    return null;
+  }
+  const containerKey = containers[Math.floor(y)][Math.floor(x)];
+  return gameState.cargo[containerKey] || { damage: 0, ejected: false };
+}
+
 let frame = 0;
 
 const keysPressed = new Set<string>();
@@ -110,13 +121,18 @@ function advanceQueuedAction() {
   };
 }
 
+function updateCreatureDelta(newDeltaX: number, newDeltaY: number) {
+  gameState.creature.deltaX = newDeltaX;
+  gameState.creature.deltaY = newDeltaY;
+}
+
 function addTextAction(...texts: string[]) {
   texts.forEach((text, index) => {
     const prevText = texts[index - 1] || "";
     addQueuedAction({
       type: "text",
       delay: Math.max(prevText.split(" ").length * 50, 180),
-      data: { text },
+      data: { text, id: Math.random() },
     });
   });
 }
@@ -135,6 +151,95 @@ const executeAction = (action: Action) => {
         linesContainer.children[linesContainer.childElementCount - 5];
       targetChild.setAttribute("style", "display: none");
     }
+  }
+  if (action.type === "CREATURE_RUN") {
+    console.log("action: run", action.data.id);
+    const creatureInfo = gameState.creature;
+    gameState.creature.behavior = "RUN";
+    // find available direction
+    const cargoAbove = getCargoAtXY(creatureInfo.x, creatureInfo.y - 1);
+    const cargoBelow = getCargoAtXY(creatureInfo.x, creatureInfo.y + 1);
+    const cargoLeft = getCargoAtXY(creatureInfo.x - 1, creatureInfo.y);
+    const cargoRight = getCargoAtXY(creatureInfo.x + 1, creatureInfo.y);
+    console.log({ cargoAbove, cargoBelow, cargoLeft, cargoRight });
+    let direction = Math.floor(Math.random() * 4); // 0 up, 1 down, 2 left, 3 right, 5 done
+    if (
+      !(cargoAbove && !cargoAbove.ejected) &&
+      !(cargoBelow && !cargoBelow.ejected) &&
+      !(cargoLeft && !cargoLeft.ejected) &&
+      !(cargoRight && !cargoRight.ejected)
+    ) {
+      // nowhere to move
+      direction = 5;
+      updateCreatureDelta(Math.random() - 0.5 / 50, Math.random() - 0.5 / 50);
+    }
+    console.log(direction);
+    while (direction !== 5) {
+      if (direction === 0) {
+        if (cargoAbove && !cargoAbove.ejected) {
+          updateCreatureDelta(0, 0.01);
+          direction = 5;
+        } else {
+          direction = direction + 1;
+        }
+      }
+      if (direction === 1) {
+        if (cargoBelow && !cargoBelow.ejected) {
+          updateCreatureDelta(0, -0.01);
+          direction = 5;
+        } else {
+          direction = direction + 1;
+        }
+      }
+      if (direction === 2) {
+        if (cargoLeft && !cargoLeft.ejected) {
+          updateCreatureDelta(-0.01, 0);
+          direction = 5;
+        } else {
+          direction = direction + 1;
+        }
+      }
+      if (direction === 3) {
+        if (cargoRight && !cargoRight.ejected) {
+          updateCreatureDelta(0.01, 0);
+          direction = 5;
+        } else {
+          direction = 0;
+        }
+      }
+    }
+
+    if (action.data.count < 5) {
+      console.log("add action to queue");
+      setTimeout(
+        () =>
+          addQueuedAction({
+            type: "CREATURE_RUN",
+            delay: 60,
+            data: {
+              count: action.data.count++,
+              id: Math.random(),
+            },
+          }),
+        0
+      );
+    }
+    if (action.data.count >= 5) {
+      setTimeout(
+        () =>
+          addQueuedAction({
+            type: "CREATURE_ATTACK",
+            delay: 0,
+            data: {
+              id: Math.random(),
+            },
+          }),
+        0
+      );
+    }
+  }
+  if (action.type === "CREATURE_ATTACK") {
+    gameState.creature.behavior === "ATTACK";
   }
   return false;
 };
@@ -156,6 +261,7 @@ function attemptToEject(code: string) {
     delay: 0,
     data: {
       text: "EJECTING MODE DISENGAGED",
+      id: Math.random(),
     },
   });
   return { result: true };
@@ -226,7 +332,7 @@ document.onkeyup = function (e) {
   if (e.code === "ShiftLeft" && !gameState.ejecting) {
     addUnqueuedAction({
       type: "text",
-      data: { text: "EJECTING MODE ENGAGED" },
+      data: { text: "EJECTING MODE ENGAGED", id: Math.random() },
       delay: 0,
     });
     gameState.ejecting = true;
@@ -235,7 +341,7 @@ document.onkeyup = function (e) {
   if (e.code === "ShiftLeft" && gameState.ejecting) {
     addUnqueuedAction({
       type: "text",
-      data: { text: "EJECTING MODE DISENGAGED" },
+      data: { text: "EJECTING MODE DISENGAGED", id: Math.random() },
       delay: 0,
     });
     gameState.ejecting = false;
@@ -283,17 +389,20 @@ function drawCreature() {
   ctx.beginPath();
   ctx.arc(x, y, PX_SIZE / 12, 0, 2 * Math.PI);
   ctx.fillStyle = "red";
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 5;
   ctx.fill();
+  ctx.stroke();
 }
 
 function updateCreature() {
   const { creature } = gameState;
   // invert delta if hitting a wall
   if (creature.x + creature.deltaX < 0 || creature.x + creature.deltaX > W) {
-    creature.deltaX = -creature.deltaX;
+    updateCreatureDelta(-creature.deltaX, creature.deltaY);
   }
   if (creature.y + creature.deltaY < 0 || creature.y + creature.deltaY > H) {
-    creature.deltaY = -creature.deltaY;
+    updateCreatureDelta(creature.deltaX, -creature.deltaY);
   }
   // invert delta if hitting a containment that's ejected
   if (
@@ -304,7 +413,7 @@ function updateCreature() {
       )
     ]?.ejected
   ) {
-    creature.deltaX = -creature.deltaX;
+    updateCreatureDelta(-creature.deltaX, creature.deltaY);
   }
   if (
     gameState.cargo[
@@ -314,12 +423,11 @@ function updateCreature() {
       )
     ]?.ejected
   ) {
-    creature.deltaY = -creature.deltaY;
+    updateCreatureDelta(creature.deltaX, -creature.deltaY);
   }
 
   if (creature.behavior === "ATTACK") {
-    creature.deltaY = (Math.random() - 0.5) / 50;
-    creature.deltaX = (Math.random() - 0.5) / 50;
+    updateCreatureDelta((Math.random() - 0.5) / 50, (Math.random() - 0.5) / 50);
   }
   const damage = creature.behavior === "ATTACK" ? 10 : 5;
   const cargoKey = XYToContainerKey(
@@ -336,6 +444,22 @@ function updateCreature() {
       ...gameState.cargo[cargoKey],
       damage: gameState.cargo[cargoKey].damage + damage,
     };
+  }
+  // add run action if cargo is heavily damage
+  // TODO add run action if ejection was just attempted and failed
+  const cargoDamage = gameState.cargo[cargoKey]?.damage;
+  if (cargoDamage > HEAVY_DAMAGE && creature.behavior !== "RUN") {
+    if (gameState.unqueuedActions.length === 0) {
+      console.log("ADD RUN ACTION");
+      addUnqueuedAction({
+        type: "CREATURE_RUN",
+        delay: 60,
+        data: {
+          count: 0,
+          id: Math.random(),
+        },
+      });
+    }
   }
 
   const newCreatureState: GameState["creature"] = {
@@ -362,7 +486,7 @@ function getKeyLocation() {
 function playRadarSound() {
   const keyLocation = getKeyLocation();
   const { creature } = gameState;
-  if (gameState.radarKey && gameState.ejecting && keyLocation) {
+  if (gameState.radarKey && !gameState.ejecting && keyLocation) {
     const { x: x1, y: y1 } = keyLocation;
     const { x: x2, y: y2 } = creature;
     const distance = Math.sqrt(

@@ -3,16 +3,36 @@ export type TextAction = {
   type: "text";
   data: {
     text: string;
+    id: number;
   };
 };
 
 export type NewLineAction = {
   delay: number;
   type: "new-line";
-  data: {};
+  data: {
+    id: number;
+  };
 };
 
-export type Action = TextAction | NewLineAction;
+export type CreatureRun = {
+  delay: number;
+  type: "CREATURE_RUN";
+  data: {
+    count: number;
+    id: number;
+  };
+};
+
+export type CreatureAttack = {
+  delay: number;
+  type: "CREATURE_ATTACK";
+  data: {
+    id: number;
+  };
+};
+
+export type Action = TextAction | NewLineAction | CreatureRun | CreatureAttack;
 
 export type GameState = {
   state: "READY" | "START" | "GAME" | "END";
@@ -21,7 +41,7 @@ export type GameState = {
     y: number;
     deltaX: number;
     deltaY: number;
-    behavior: "HIGH_HEALTH" | "LOW_HEALTH" | "RUN" | "ATTACK";
+    behavior: "RUN" | "ATTACK";
   };
   radarKey: string;
   // each queued action waits until the previous one is done
