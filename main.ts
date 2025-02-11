@@ -3,6 +3,7 @@ import { Action, GameState } from "./types";
 const PX_SIZE = 96;
 const W = 9;
 const H = 4;
+let fps = 60;
 
 const HEAVY_DAMAGE = 255 * 50;
 
@@ -35,8 +36,29 @@ export function angleTowards(
 }
 
 const audio = document.getElementById("beep") as HTMLAudioElement;
+const audioVoice = document.getElementById("voice") as HTMLAudioElement;
 const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+const gameStartButton = document.getElementById(
+  "game-start"
+) as HTMLButtonElement;
+const gameContinueButton = document.getElementById(
+  "game-continue"
+) as HTMLButtonElement;
+const gameMenu = document.getElementById("menu") as HTMLDivElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+
+let dialog: Record<string, string>;
+
+fetch("./audio/dialog.txt").then(async (res) => {
+  dialog = (await res.text())
+    .split("\n")
+    .map((line) => line.split("|"))
+    .reduce<Record<string, string>>((acc, linePair) => {
+      acc[linePair[0]] = linePair[1];
+      // fetch(`./audio/en/${linePair[0]}.wav`);
+      return acc;
+    }, {});
+});
 
 canvas.width = PX_SIZE * W;
 canvas.height = PX_SIZE * H;
@@ -92,7 +114,7 @@ let frame = 0;
 const keysPressed = new Set<string>();
 
 let gameState: GameState = {
-  state: "READY",
+  state: "MENU",
   creature: {
     x: 4,
     y: 2,
@@ -104,7 +126,7 @@ let gameState: GameState = {
   queuedActions: [],
   unqueuedActions: [],
   cargo: {},
-  showCargos: true,
+  showCreatureAndDamage: true,
   ejecting: false,
 };
 
@@ -126,15 +148,53 @@ function updateCreatureDelta(newDeltaX: number, newDeltaY: number) {
   gameState.creature.deltaY = newDeltaY;
 }
 
-function addTextAction(...texts: string[]) {
-  texts.forEach((text, index) => {
-    const prevText = texts[index - 1] || "";
-    addQueuedAction({
-      type: "text",
-      delay: Math.max(prevText.split(" ").length * 50, 180),
-      data: { text, id: Math.random() },
+async function getAudioDuration(url: string) {
+  try {
+    // Fetch the audio file as a Blob
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const objectURL = URL.createObjectURL(blob);
+
+    // Create an audio element
+    const audio = new Audio();
+    audio.src = objectURL;
+
+    // Wait for metadata to load
+    return new Promise((resolve, reject) => {
+      audio.addEventListener("loadedmetadata", () => {
+        return resolve(audio.duration);
+      });
+
+      audio.addEventListener("error", (e) => {
+        reject("Failed to load audio metadata.");
+      });
     });
-  });
+  } catch (error) {
+    console.error("Error fetching audio file:", error);
+  }
+}
+
+async function addTextAction(...texts: string[]) {
+  for (let index = 0; index < texts.length; index++) {
+    const text = texts[index];
+    const prevText = texts[index - 1] || "";
+    if (prevText) {
+      const audioDuration = await getAudioDuration(
+        `./audio/en/${prevText}.wav`
+      );
+      addQueuedAction({
+        type: "text",
+        delay: 1000 * (audioDuration as number),
+        data: { text: dialog[text], id: Math.random() },
+      });
+    } else {
+      addQueuedAction({
+        type: "text",
+        delay: 0,
+        data: { text: dialog[text], id: Math.random() },
+      });
+    }
+  }
 }
 
 const executeAction = (action: Action) => {
@@ -146,6 +206,16 @@ const executeAction = (action: Action) => {
     const newLine = document.createElement("div");
     newLine.innerText = action.data.text;
     linesContainer.appendChild(newLine);
+    const dialogEntry = Object.entries(dialog).find(([__key, value]) => {
+      return value === action.data.text;
+    });
+    if (dialogEntry?.[0]) {
+      audioVoice.src = `./audio/en/${dialogEntry[0]}.wav`;
+      audioVoice.load();
+      audioVoice.currentTime = 0;
+      audioVoice.play();
+    }
+
     if (linesContainer.childElementCount > 4) {
       const targetChild =
         linesContainer.children[linesContainer.childElementCount - 5];
@@ -153,7 +223,6 @@ const executeAction = (action: Action) => {
     }
   }
   if (action.type === "CREATURE_RUN") {
-    console.log("action: run", action.data.id);
     const creatureInfo = gameState.creature;
     gameState.creature.behavior = "RUN";
     // find available direction
@@ -161,7 +230,6 @@ const executeAction = (action: Action) => {
     const cargoBelow = getCargoAtXY(creatureInfo.x, creatureInfo.y + 1);
     const cargoLeft = getCargoAtXY(creatureInfo.x - 1, creatureInfo.y);
     const cargoRight = getCargoAtXY(creatureInfo.x + 1, creatureInfo.y);
-    console.log({ cargoAbove, cargoBelow, cargoLeft, cargoRight });
     let direction = Math.floor(Math.random() * 4); // 0 up, 1 down, 2 left, 3 right, 5 done
     if (
       !(cargoAbove && !cargoAbove.ejected) &&
@@ -173,7 +241,6 @@ const executeAction = (action: Action) => {
       direction = 5;
       updateCreatureDelta(Math.random() - 0.5 / 50, Math.random() - 0.5 / 50);
     }
-    console.log(direction);
     while (direction !== 5) {
       if (direction === 0) {
         if (cargoAbove && !cargoAbove.ejected) {
@@ -210,7 +277,6 @@ const executeAction = (action: Action) => {
     }
 
     if (action.data.count < 5) {
-      console.log("add action to queue");
       setTimeout(
         () =>
           addQueuedAction({
@@ -275,13 +341,13 @@ function gameLoop() {
     }
     return {
       ...action,
-      delay: action.delay - 1,
+      delay: action.delay - 1000 / fps,
     };
   });
   gameState.unqueuedActions = gameState.unqueuedActions.map((action) => {
     return {
       ...action,
-      delay: action.delay - 1,
+      delay: action.delay - 1000 / fps,
     };
   });
   gameState.queuedActions = gameState.queuedActions.filter(executeAction);
@@ -290,28 +356,29 @@ function gameLoop() {
 
 document.onkeydown = function (e) {
   // key code for space
-  if (e.code === "Enter") {
+  console.log(e.code, gameState.state);
+  if (e.code === "Enter" && gameState.state === "READY") {
     addTextAction(
-      "BOOTING UP CARGO BAY COMPUTER INTELEGENCE...",
-      "GOOD MORNING CAPTAIN.",
-      "WE HAVE WOKEN YOU EARLY FROM CRYO SLEEP TO DEAL WITH AN ANOMOLY IN THE CARGO BAY.",
-      "WE BELIEVE A CREATURE FROM CRATE X-7/2 WAS NOT PROPERLY CONTAINED IS NOW DESTROYING NEIGHBORING CARGO UNITS.",
-      "THIS IS AN UNACCEPTABLE LOSS FOR THE CORPERATION.",
-      "THERE ARE 36 CONTAINERS IN THE CARGO BAY. THEY ARE LABELED AND LOCATED BASED ON THE KEYBOARD CONFIGURATION IN FRONT OF YOU.",
-      "'1' THROUGH '9' TO 'Z' THROUGH 'PERIOD' ARE ALL VALID CARGO KEYS.",
-      "PRESS ANY CARGO KEY ON YOUR KEYBOARD TO ACTIVATE ITS DOPPLER-RADAR FROM ITS RESPECTIVE LOCATION.",
-      "PRESS SHIFT PLUS ANY CARGO KEY TO EJECT THE CONTAINER INTO SPACE.",
-      "IDENTIFY THE CREATURES LOCATION.",
-      "EJECT IT.",
-      "DO NOT EJECT AN EXTRANIOUS CARGO, YOU WILL BE FINED FOR ANY UNECESSARY LOSSES.",
-      "PRESS ENTER TO BEGIN."
+      "opening1",
+      "opening2",
+      "opening3",
+      "opening4",
+      "opening5",
+      "opening6",
+      "opening7",
+      "opening8",
+      "opening9",
+      "opening10",
+      "opening11",
+      "opening12",
+      "opening13"
     );
   }
   if (e.code === "Space") {
     advanceQueuedAction();
   }
   if (e.code === "Slash") {
-    gameState.showCargos = !gameState.showCargos;
+    gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
   }
   if (e.code === "Backslash") {
     if (gameState.creature.behavior === "RUN") {
@@ -319,6 +386,10 @@ document.onkeydown = function (e) {
     } else {
       gameState.creature.behavior = "RUN";
     }
+  }
+  if (e.code === "Escape") {
+    gameState.state === "MENU";
+    gameMenu.setAttribute("style", "");
   }
   keysPressed.add(e.code);
   gameState.radarKey = e.code;
@@ -370,9 +441,11 @@ function drawContainers() {
         ctx.fillStyle = `rgb(0,0,255)`;
         ctx.fillRect(x, y, width, height);
       }
-      if (cargoDamage && !gameState.cargo[cargoKey].ejected) {
-        ctx.fillStyle = `rgb(${Math.min(cargoDamage / 50, 255)}, 0, 0)`;
-        ctx.fillRect(x, y, width, height);
+      if (gameState.showCreatureAndDamage) {
+        if (cargoDamage && !gameState.cargo[cargoKey].ejected) {
+          ctx.fillStyle = `rgb(${Math.min(cargoDamage / 50, 255)}, 0, 0)`;
+          ctx.fillRect(x, y, width, height);
+        }
       }
       if (gameState.radarKey === containers[row][col]) {
         ctx.fillStyle = "rgb(47, 255, 0)";
@@ -450,7 +523,6 @@ function updateCreature() {
   const cargoDamage = gameState.cargo[cargoKey]?.damage;
   if (cargoDamage > HEAVY_DAMAGE && creature.behavior !== "RUN") {
     if (gameState.unqueuedActions.length === 0) {
-      console.log("ADD RUN ACTION");
       addUnqueuedAction({
         type: "CREATURE_RUN",
         delay: 60,
@@ -499,16 +571,19 @@ function playRadarSound() {
       angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
       0;
 
-    audio.playbackRate =
-      creature.behavior === "RUN"
-        ? Math.max(Math.PI / 2 - angle, 0.2)
-        : Math.max(Math.min(1.5 - distance, 2), 0.2);
+    audio.playbackRate = Math.max(Math.min(1.5 - distance, 2), 0.2);
+
+    // audio.playbackRate =
+    //   creature.behavior === "RUN"
+    //     ? Math.max(Math.PI / 2 - angle, 0.2)
+    //     : Math.max(Math.min(1.5 - distance, 2), 0.2);
 
     if (audio.paused) {
       audio.play();
     }
   }
   if (!gameState.radarKey) {
+    audio.volume = 0;
     if (!audio.paused) {
       audio.pause();
     }
@@ -526,8 +601,8 @@ function animate() {
     playRadarSound();
   }
 
-  if (gameState.showCargos) {
-    drawContainers();
+  drawContainers();
+  if (gameState.showCreatureAndDamage) {
     drawCreature();
   }
 
@@ -537,3 +612,21 @@ function animate() {
   requestAnimationFrame(animate);
 }
 animate();
+
+gameStartButton.onclick = () => {
+  gameState.state = "READY";
+  gameMenu.setAttribute("style", "display: none");
+  gameStartButton.setAttribute("style", "display: none");
+  gameContinueButton.setAttribute("style", "");
+};
+
+gameContinueButton.onclick = () => {
+  gameState.state = "READY";
+  gameMenu.setAttribute("style", "display: none");
+};
+
+let lastFrameCount = 0;
+setInterval(() => {
+  fps = frame - lastFrameCount;
+  lastFrameCount = frame;
+}, 1000);

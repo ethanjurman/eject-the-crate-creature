@@ -35,7 +35,7 @@ export type CreatureAttack = {
 export type Action = TextAction | NewLineAction | CreatureRun | CreatureAttack;
 
 export type GameState = {
-  state: "READY" | "START" | "GAME" | "END";
+  state: "MENU" | "READY" | "START" | "GAME" | "END";
   creature: {
     x: number;
     y: number;
@@ -55,6 +55,6 @@ export type GameState = {
       ejected: boolean;
     }
   >;
-  showCargos: boolean;
+  showCreatureAndDamage: boolean;
   ejecting: boolean;
 };
