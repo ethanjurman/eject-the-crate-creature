@@ -137,7 +137,7 @@ function addUnqueuedAction(action: Action) {
   gameState.unqueuedActions.push(action);
 }
 function advanceQueuedAction() {
-  if (gameState.queuedActions[0]?.type === "text") {
+  if (gameState.queuedActions[0]?.type === "TEXT") {
     gameState.queuedActions[0] = {
       ...gameState.queuedActions[0],
       delay: -1,
@@ -185,13 +185,13 @@ async function addTextAction(...texts: string[]) {
         `./audio/en/${prevText}.wav`
       );
       addQueuedAction({
-        type: "text",
+        type: "TEXT",
         delay: 1000 * (audioDuration as number),
         data: { text: dialog[text], id: Math.random() },
       });
     } else {
       addQueuedAction({
-        type: "text",
+        type: "TEXT",
         delay: 0,
         data: { text: dialog[text], id: Math.random() },
       });
@@ -203,7 +203,7 @@ const executeAction = (action: Action) => {
   if (action.delay > 0) {
     return true;
   }
-  if (action.type === "text") {
+  if (action.type === "TEXT") {
     const linesContainer = document.getElementById("lines") as HTMLElement;
     const newLine = document.createElement("div");
     newLine.innerText = action.data.text;
@@ -248,7 +248,6 @@ const executeAction = (action: Action) => {
         gameState.creature.deltaY = -0.01;
       },
     ][runDir]();
-    console.log({ runDir, count: action.data.count });
 
     const onCargoWithHeavyDamge =
       (getCargoAtXY(creatureInfo.x, creatureInfo.y)?.damage || 0) >=
@@ -257,7 +256,6 @@ const executeAction = (action: Action) => {
       setTimeout(() => {
         const id = Math.random();
         const newCount = action.data.count + 1;
-        console.log({ id, newCount });
         addQueuedAction({
           type: "CREATURE_RUN",
           delay: 1000,
@@ -290,24 +288,19 @@ const executeAction = (action: Action) => {
 
 function attemptToEject(code: string) {
   if (gameState.cargo[code]?.ejected) {
+    addTextAction(code, "ejectingFailedTooDamaged");
     return { result: false, reason: "ejected" };
   }
   if (gameState.cargo[code]?.damage > HEAVY_DAMAGE) {
+    addTextAction(code, "ejectingFailedAlreadyEjected");
     return { result: false, reason: "damage" };
   }
   gameState.cargo[code] = {
     ...gameState.cargo[code],
     ejected: true,
   };
+  addTextAction(code, "isEjected", "ejectingDisengaged");
   gameState.ejecting = false;
-  addUnqueuedAction({
-    type: "text",
-    delay: 0,
-    data: {
-      text: "EJECTING MODE DISENGAGED",
-      id: Math.random(),
-    },
-  });
   return { result: true };
 }
 
@@ -345,7 +338,6 @@ function gameLoop() {
 
 document.onkeydown = function (e) {
   // key code for space
-  console.log(e.code, gameState.state);
   if (e.code === "Enter" && gameState.state === "READY") {
     addTextAction(
       "opening1",
@@ -390,20 +382,12 @@ document.onkeydown = function (e) {
 document.onkeyup = function (e) {
   keysPressed.delete(e.code);
   if (e.code === "ShiftLeft" && !gameState.ejecting) {
-    addUnqueuedAction({
-      type: "text",
-      data: { text: "EJECTING MODE ENGAGED", id: Math.random() },
-      delay: 0,
-    });
+    addTextAction("ejectingEngaged");
     gameState.ejecting = true;
     return;
   }
   if (e.code === "ShiftLeft" && gameState.ejecting) {
-    addUnqueuedAction({
-      type: "text",
-      data: { text: "EJECTING MODE DISENGAGED", id: Math.random() },
-      delay: 0,
-    });
+    addTextAction("ejectingDisengaged");
     gameState.ejecting = false;
     return;
   }

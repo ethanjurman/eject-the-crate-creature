@@ -120,7 +120,7 @@ function addUnqueuedAction(action) {
 }
 function advanceQueuedAction() {
     var _a;
-    if (((_a = gameState.queuedActions[0]) === null || _a === void 0 ? void 0 : _a.type) === "text") {
+    if (((_a = gameState.queuedActions[0]) === null || _a === void 0 ? void 0 : _a.type) === "TEXT") {
         gameState.queuedActions[0] = Object.assign(Object.assign({}, gameState.queuedActions[0]), { delay: -1 });
     }
 }
@@ -161,14 +161,14 @@ function addTextAction(...texts) {
             if (prevText) {
                 const audioDuration = yield getAudioDuration(`./audio/en/${prevText}.wav`);
                 addQueuedAction({
-                    type: "text",
+                    type: "TEXT",
                     delay: 1000 * audioDuration,
                     data: { text: dialog[text], id: Math.random() },
                 });
             }
             else {
                 addQueuedAction({
-                    type: "text",
+                    type: "TEXT",
                     delay: 0,
                     data: { text: dialog[text], id: Math.random() },
                 });
@@ -181,7 +181,7 @@ const executeAction = (action) => {
     if (action.delay > 0) {
         return true;
     }
-    if (action.type === "text") {
+    if (action.type === "TEXT") {
         const linesContainer = document.getElementById("lines");
         const newLine = document.createElement("div");
         newLine.innerText = action.data.text;
@@ -222,14 +222,12 @@ const executeAction = (action) => {
                 gameState.creature.deltaY = -0.01;
             },
         ][runDir]();
-        console.log({ runDir, count: action.data.count });
         const onCargoWithHeavyDamge = (((_a = getCargoAtXY(creatureInfo.x, creatureInfo.y)) === null || _a === void 0 ? void 0 : _a.damage) || 0) >=
             HEAVY_DAMAGE;
         if (action.data.count < 5 || onCargoWithHeavyDamge) {
             setTimeout(() => {
                 const id = Math.random();
                 const newCount = action.data.count + 1;
-                console.log({ id, newCount });
                 addQueuedAction({
                     type: "CREATURE_RUN",
                     delay: 1000,
@@ -258,21 +256,16 @@ const executeAction = (action) => {
 function attemptToEject(code) {
     var _a, _b;
     if ((_a = gameState.cargo[code]) === null || _a === void 0 ? void 0 : _a.ejected) {
+        addTextAction(code, "ejectingFailedTooDamaged");
         return { result: false, reason: "ejected" };
     }
     if (((_b = gameState.cargo[code]) === null || _b === void 0 ? void 0 : _b.damage) > HEAVY_DAMAGE) {
+        addTextAction(code, "ejectingFailedAlreadyEjected");
         return { result: false, reason: "damage" };
     }
     gameState.cargo[code] = Object.assign(Object.assign({}, gameState.cargo[code]), { ejected: true });
+    addTextAction(code, "isEjected", "ejectingDisengaged");
     gameState.ejecting = false;
-    addUnqueuedAction({
-        type: "text",
-        delay: 0,
-        data: {
-            text: "EJECTING MODE DISENGAGED",
-            id: Math.random(),
-        },
-    });
     return { result: true };
 }
 function gameLoop() {
@@ -300,7 +293,6 @@ function gameLoop() {
 }
 document.onkeydown = function (e) {
     // key code for space
-    console.log(e.code, gameState.state);
     if (e.code === "Enter" && gameState.state === "READY") {
         addTextAction("opening1", "opening2", "opening3", "opening4", "opening5", "opening6", "opening7", "opening8", "opening9", "opening10", "opening11", "opening12", "opening13");
     }
@@ -331,20 +323,12 @@ document.onkeydown = function (e) {
 document.onkeyup = function (e) {
     keysPressed.delete(e.code);
     if (e.code === "ShiftLeft" && !gameState.ejecting) {
-        addUnqueuedAction({
-            type: "text",
-            data: { text: "EJECTING MODE ENGAGED", id: Math.random() },
-            delay: 0,
-        });
+        addTextAction("ejectingEngaged");
         gameState.ejecting = true;
         return;
     }
     if (e.code === "ShiftLeft" && gameState.ejecting) {
-        addUnqueuedAction({
-            type: "text",
-            data: { text: "EJECTING MODE DISENGAGED", id: Math.random() },
-            delay: 0,
-        });
+        addTextAction("ejectingDisengaged");
         gameState.ejecting = false;
         return;
     }

@@ -1,16 +1,8 @@
 export type TextAction = {
   delay: number;
-  type: "text";
+  type: "TEXT";
   data: {
     text: string;
-    id: number;
-  };
-};
-
-export type NewLineAction = {
-  delay: number;
-  type: "new-line";
-  data: {
     id: number;
   };
 };
@@ -32,7 +24,7 @@ export type CreatureAttack = {
   };
 };
 
-export type Action = TextAction | NewLineAction | CreatureRun | CreatureAttack;
+export type Action = TextAction | CreatureRun | CreatureAttack;
 
 export type GameState = {
   state: "MENU" | "READY" | "START" | "GAME" | "END";
