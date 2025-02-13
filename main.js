@@ -33,6 +33,7 @@ function angleTowards(A, B, deltaX, deltaY) {
     return angle; // in radians; multiply by 180/Math.PI for degrees if needed
 }
 const audio = document.getElementById("beep");
+const music = document.getElementById("music");
 const audioVoice = document.getElementById("voice");
 const canvas = document.getElementById("canvas");
 const gameStartButton = document.getElementById("game-start");
@@ -109,7 +110,7 @@ let gameState = {
     queuedActions: [],
     unqueuedActions: [],
     cargo: {},
-    showCreatureAndDamage: true,
+    showCreatureAndDamage: false,
     ejecting: false,
 };
 function addQueuedAction(action) {
@@ -180,6 +181,9 @@ const executeAction = (action) => {
     var _a;
     if (action.delay > 0) {
         return true;
+    }
+    if (action.type === "GAME_STATE_UPDATE") {
+        gameState.state = action.data.state;
     }
     if (action.type === "TEXT") {
         const linesContainer = document.getElementById("lines");
@@ -256,11 +260,11 @@ const executeAction = (action) => {
 function attemptToEject(code) {
     var _a, _b;
     if ((_a = gameState.cargo[code]) === null || _a === void 0 ? void 0 : _a.ejected) {
-        addTextAction(code, "ejectingFailedTooDamaged");
+        addTextAction(code, "ejectingFailedAlreadyEjected");
         return { result: false, reason: "ejected" };
     }
     if (((_b = gameState.cargo[code]) === null || _b === void 0 ? void 0 : _b.damage) > HEAVY_DAMAGE) {
-        addTextAction(code, "ejectingFailedAlreadyEjected");
+        addTextAction(code, "ejectingFailedTooDamaged");
         return { result: false, reason: "damage" };
     }
     gameState.cargo[code] = Object.assign(Object.assign({}, gameState.cargo[code]), { ejected: true });
@@ -270,7 +274,7 @@ function attemptToEject(code) {
 }
 function gameLoop() {
     // TODO: update for GAME game state instead of READY
-    if (gameState.state === "READY") {
+    if (gameState.state === "GAME") {
         updateCreature();
         playRadarSound();
     }
@@ -294,20 +298,14 @@ function gameLoop() {
 document.onkeydown = function (e) {
     // key code for space
     if (e.code === "Enter" && gameState.state === "READY") {
-        addTextAction("opening1", "opening2", "opening3", "opening4", "opening5", "opening6", "opening7", "opening8", "opening9", "opening10", "opening11", "opening12", "opening13");
+        gameState.state = "GAME";
     }
     if (e.code === "Space") {
         advanceQueuedAction();
     }
     if (e.code === "Slash") {
-        gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
-    }
-    if (e.code === "Backslash") {
-        if (gameState.creature.behavior === "RUN") {
-            gameState.creature.behavior = "ATTACK";
-        }
-        else {
-            gameState.creature.behavior = "RUN";
+        if (localStorage.getItem("debugger") === "true") {
+            gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
         }
     }
     if (e.code === "Escape") {
@@ -482,13 +480,20 @@ function animate() {
 }
 animate();
 gameStartButton.onclick = () => {
-    gameState.state = "READY";
+    gameState.state = "OPENING";
     gameMenu.setAttribute("style", "display: none");
     gameStartButton.setAttribute("style", "display: none");
     gameContinueButton.setAttribute("style", "");
+    music.play();
+    addTextAction("opening1", "opening2", "opening3", "opening4", "opening5", "opening6", "opening7", "opening8", "opening9", "opening10", "opening11", "opening12", "opening13");
+    addQueuedAction({
+        type: "GAME_STATE_UPDATE",
+        delay: 0,
+        data: { state: "READY", id: Math.random() },
+    });
 };
 gameContinueButton.onclick = () => {
-    gameState.state = "READY";
+    gameState.state = "GAME";
     gameMenu.setAttribute("style", "display: none");
 };
 let lastFrameCount = 0;

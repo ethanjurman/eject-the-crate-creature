@@ -7,6 +7,23 @@ export type TextAction = {
   };
 };
 
+export type GameStates =
+  | "MENU"
+  | "OPENING"
+  | "READY"
+  | "START"
+  | "GAME"
+  | "END";
+
+export type GameStateUpdate = {
+  delay: number;
+  type: "GAME_STATE_UPDATE";
+  data: {
+    state: GameStates;
+    id: number;
+  };
+};
+
 export type CreatureRun = {
   delay: number;
   type: "CREATURE_RUN";
@@ -24,10 +41,14 @@ export type CreatureAttack = {
   };
 };
 
-export type Action = TextAction | CreatureRun | CreatureAttack;
+export type Action =
+  | TextAction
+  | GameStateUpdate
+  | CreatureRun
+  | CreatureAttack;
 
 export type GameState = {
-  state: "MENU" | "READY" | "START" | "GAME" | "END";
+  state: GameStates;
   creature: {
     x: number;
     y: number;

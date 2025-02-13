@@ -94,6 +94,7 @@
     <script defer src="./dist/build.js"></script>
   </head>
   <body>
+    <audio id="music" loop src="./audio/music.wav"></audio>
     <audio id="voice" src=""></audio>
     <audio preload id="beep" loop="true" src="./boop.wav"></audio>
     <div id="read-line" aria-live="assertive"></div>
@@ -149,7 +150,7 @@
         </button>
       </div>
       <div>
-        Game Volume:
+        Sound Effects Volume:
         <input
           type="range"
           id="game-volume"
@@ -159,6 +160,20 @@
           step="0.05"
         />
         <button id="test-audio-game" aria-label="test in game audio">
+          <img class="icon" src="./volume-icon.png" />
+        </button>
+      </div>
+      <div>
+        Music Volume:
+        <input
+          type="range"
+          id="music-volume"
+          name="music volume"
+          min="0"
+          max="1"
+          step="0.05"
+        />
+        <button id="test-audio-music" aria-label="test music audio">
           <img class="icon" src="./volume-icon.png" />
         </button>
       </div>
