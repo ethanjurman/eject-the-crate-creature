@@ -525,9 +525,9 @@ function playRadarSound() {
 
     audio.volume = keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0;
 
-    const angle =
-      angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
-      0;
+    // const angle =
+    //   angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
+    //   0;
 
     audio.playbackRate = Math.max(Math.min(1.5 - distance, 2), 0.2);
 

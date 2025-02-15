@@ -87,6 +87,14 @@
       #lines {
         place-items: center;
       }
+      .menu-line {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .menu-line > div {
+        padding-bottom: 0px;
+      }
     </style>
     <script>
       var exports = {};
@@ -95,7 +103,7 @@
   </head>
   <body>
     <audio id="music" loop src="./audio/music.wav"></audio>
-    <audio id="voice" src=""></audio>
+    <audio id="voice" src="./audio/en/opening1.wav"></audio>
     <audio preload id="beep" loop="true" src="./boop.wav"></audio>
     <div id="read-line" aria-live="assertive"></div>
     <div id="lines"></div>
@@ -114,68 +122,75 @@
       <div>EJECT THE CRATE CREATURE</div>
       <div><i>a game by Ethan Jurman</i></div>
       <br />
-      <div>
+      <div class="menu-line">
         Font:
         <select id="font-selection" name="fonts">
           <option value="monospace" selected>Monospace</option>
           <option value="Atkinson-Hyperlegible">Atkinson Hyperlegible</option>
         </select>
       </div>
-      <div>
+      <div class="menu-line">
         Font glow:
         <select id="font-glow" name="font glow">
           <option value="4px" selected>ON</option>
           <option value="0px">OFF</option>
         </select>
       </div>
-      <div>
+      <div class="menu-line">
         In Game Text to Speech:
         <select name="in-game-text-to-speech">
           <option value="ON" selected>ON</option>
           <option value="OFF">OFF</option>
         </select>
       </div>
-      <div>
+      <div class="menu-line">
         Text to Speech Volume:
-        <input
-          type="range"
-          id="tts-volume"
-          name="tts volume"
-          min="0"
-          max="1"
-          step="0.05"
-        />
-        <button id="test-audio-speech" aria-label="test text to speech">
-          <img class="icon" src="./volume-icon.png" />
-        </button>
+        <div>
+          <input
+            type="range"
+            id="tts-volume-input"
+            name="tts volume"
+            min="0"
+            max="1"
+            step="0.05"
+          />
+          <button id="test-audio-speech" aria-label="test text to speech">
+            <img class="icon" src="./icon-play.png" />
+          </button>
+        </div>
       </div>
-      <div>
+      <div class="menu-line">
         Sound Effects Volume:
-        <input
-          type="range"
-          id="game-volume"
-          name="game volume"
-          min="0"
-          max="1"
-          step="0.05"
-        />
-        <button id="test-audio-game" aria-label="test in game audio">
-          <img class="icon" src="./volume-icon.png" />
-        </button>
+        <div>
+          <input
+            type="range"
+            id="game-volume-input"
+            name="game volume"
+            min="0"
+            max="1"
+            step="0.05"
+          />
+          <button id="test-audio-game" aria-label="test in game audio">
+            <img class="icon" src="./icon-play.png" />
+          </button>
+        </div>
       </div>
-      <div>
+      <div class="menu-line">
         Music Volume:
-        <input
-          type="range"
-          id="music-volume"
-          name="music volume"
-          min="0"
-          max="1"
-          step="0.05"
-        />
-        <button id="test-audio-music" aria-label="test music audio">
-          <img class="icon" src="./volume-icon.png" />
-        </button>
+        <div>
+          <input
+            type="range"
+            id="music-volume-input"
+            name="music volume"
+            min="0"
+            max="1"
+            value="0.5"
+            step="0.05"
+          />
+          <button id="test-audio-music" aria-label="test music audio">
+            <img class="icon" src="./icon-play.png" />
+          </button>
+        </div>
       </div>
       <div>
         <button id="game-start">start</button>

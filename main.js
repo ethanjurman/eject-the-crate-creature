@@ -450,8 +450,9 @@ function playRadarSound() {
         const { x: x2, y: y2 } = creature;
         const distance = Math.sqrt(Math.pow(x2 - x1, 2) / W + Math.pow(y2 - y1, 2) / H);
         audio.volume = keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0;
-        const angle = angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
-            0;
+        // const angle =
+        //   angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
+        //   0;
         audio.playbackRate = Math.max(Math.min(1.5 - distance, 2), 0.2);
         // audio.playbackRate =
         //   creature.behavior === "RUN"

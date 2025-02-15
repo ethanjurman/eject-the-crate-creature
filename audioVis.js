@@ -9,8 +9,8 @@ function updateVisualizer() {
     // Calculate the effective sound duration
     const effectiveDuration = audioPlayer.duration / audioPlayer.playbackRate;
     // For example: 0.241 sec / 0.25 ≈ 0.964 sec
-    // Calculate the visualizer's height (e.g., volume 1 → 400px)
-    const visHeight = audioPlayer.volume * 400;
+    // Calculate the visualizer's height (e.g., volume 1 → 360px)
+    const visHeight = audioPlayer.volume * 360;
     // Update the inline styles:
     audioVis.style.height = `${visHeight}px`;
     audioVis.style.background = audioPlayer.volume === 0 ? "black" : "#2fff00"; // neon green when active

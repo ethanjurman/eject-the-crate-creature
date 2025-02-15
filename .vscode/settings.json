@@ -1,5 +1,5 @@
 {
   "emeraldwalk.runonsave": {
-    "commands": [{ "cmd": "cat ./*.js > dist/build.js" }]
+    "commands": [{ "cmd": "type .\\*.js > dist\\build.js" }]
   }
 }

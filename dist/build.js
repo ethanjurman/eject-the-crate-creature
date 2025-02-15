@@ -9,8 +9,8 @@ function updateVisualizer() {
     // Calculate the effective sound duration
     const effectiveDuration = audioPlayer.duration / audioPlayer.playbackRate;
     // For example: 0.241 sec / 0.25 ≈ 0.964 sec
-    // Calculate the visualizer's height (e.g., volume 1 → 400px)
-    const visHeight = audioPlayer.volume * 400;
+    // Calculate the visualizer's height (e.g., volume 1 → 360px)
+    const visHeight = audioPlayer.volume * 360;
     // Update the inline styles:
     audioVis.style.height = `${visHeight}px`;
     audioVis.style.background = audioPlayer.volume === 0 ? "black" : "#2fff00"; // neon green when active
@@ -501,8 +501,9 @@ function playRadarSound() {
         const { x: x2, y: y2 } = creature;
         const distance = Math.sqrt(Math.pow(x2 - x1, 2) / W + Math.pow(y2 - y1, 2) / H);
         audio.volume = keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0;
-        const angle = angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
-            0;
+        // const angle =
+        //   angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
+        //   0;
         audio.playbackRate = Math.max(Math.min(1.5 - distance, 2), 0.2);
         // audio.playbackRate =
         //   creature.behavior === "RUN"
@@ -554,6 +555,21 @@ setInterval(() => {
 }, 1000);
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const initMenuAudio = (audioElement, buttonElement, iconElement, inputElement) => {
+    inputElement.addEventListener("input", () => {
+        audioElement.volume = Number(inputElement.value);
+    });
+    buttonElement.onclick = () => {
+        if (audioElement.paused) {
+            iconElement.src = "./icon-stop.png";
+            audioElement.play();
+        }
+        else {
+            iconElement.src = "./icon-play.png";
+            audioElement.pause();
+        }
+    };
+};
 const fontSelection = document.getElementById("font-selection");
 fontSelection.addEventListener("change", function () {
     document.documentElement.style.setProperty("--dynamic-font", this.value);
@@ -563,11 +579,31 @@ fontGlowSelection.addEventListener("change", function () {
     document.documentElement.style.setProperty("--font-glow", this.value);
 });
 const inGameTextToSpeech = document.getElementById("in-game-text-to-speech");
-const textToSpeechVolume = document.getElementById("tts-volume");
-const gameVolume = document.getElementById("game-volume");
-const musicVolume = document.getElementById("music-volume");
-const testSpeechVolume = document.getElementById("test-audio-speech");
-const testGameVolume = document.getElementById("test-audio-game");
-const testMusicVolume = document.getElementById("test-audio-music");
+// audio volume adjusters
+const ttsVolumeInput = document.getElementById("tts-volume-input");
+const gameVolumeInput = document.getElementById("game-volume-input");
+const musicVolumeInput = document.getElementById("music-volume-input");
+// audio elements on page
+const ttsForMenu = document.getElementById("voice");
+ttsForMenu.volume = 0.5;
+ttsForMenu.addEventListener("ended", () => {
+    ttsPlayIcon.src = "./icon-play.png";
+});
+const soundEffectsForMenu = document.getElementById("beep");
+soundEffectsForMenu.volume = 0.5;
+const musicForMenu = document.getElementById("music");
+musicForMenu.volume = 0.5;
+// test volume buttons
+const testSpeechVolumeButton = document.getElementById("test-audio-speech");
+const testGameVolumeButton = document.getElementById("test-audio-game");
+const testMusicVolumeButton = document.getElementById("test-audio-music");
+// icons for playing test audio
+const ttsPlayIcon = document.querySelector("#test-audio-speech > img");
+const soundEffectsPlayIcon = document.querySelector("#test-audio-game > img");
+const musicPlayIcon = document.querySelector("#test-audio-music > img");
+// init
+initMenuAudio(ttsForMenu, testSpeechVolumeButton, ttsPlayIcon, ttsVolumeInput);
+initMenuAudio(soundEffectsForMenu, testGameVolumeButton, soundEffectsPlayIcon, gameVolumeInput);
+initMenuAudio(musicForMenu, testMusicVolumeButton, musicPlayIcon, musicVolumeInput);
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
