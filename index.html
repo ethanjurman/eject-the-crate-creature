@@ -89,8 +89,25 @@
         height: 1em;
         mix-blend-mode: lighten;
       }
+      #top-text {
+        display: grid;
+        grid-template-columns: 2fr 8fr 2fr;
+      }
       #lines {
         place-items: center;
+        height: 5em;
+        overflow: auto;
+        display: flex;
+        flex-direction: column-reverse;
+      }
+      #score {
+        margin: auto;
+        background: none;
+        border: 4px solid;
+        border-radius: 12px;
+        padding: 4px;
+        color: red;
+        text-shadow: 0 0 9px RED;
       }
       .menu-line {
         display: flex;
@@ -149,7 +166,11 @@
       data-volume-max="0.5"
     ></audio>
     <div id="read-line" aria-live="assertive"></div>
-    <div id="lines"></div>
+    <div id="top-text">
+      <div></div>
+      <div id="lines"></div>
+      <div id="score">-$0</div>
+    </div>
     <!-- game -->
     <div class="flex-horz">
       <div id="audio-visualizer"></div>

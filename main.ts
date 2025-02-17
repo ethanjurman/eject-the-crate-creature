@@ -86,15 +86,21 @@ const containersFlat = containers.reduce<string[]>((acc, row) => {
   return acc;
 }, []);
 
-function containerKeyToXY(key: string) {
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      if (containers[y][x] === key) {
-        return { x, y };
-      }
+function getScore() {
+  let score = 0;
+  Object.values(gameState.cargo).forEach((cargo) => {
+    if (cargo.ejected) {
+      score += 250;
+    } else {
+      score += (cargo.damage / HEAVY_DAMAGE) * 250;
     }
-  }
-  return null;
+  });
+  return Math.floor(score / 10) * 10;
+}
+
+function updateScore() {
+  const scoreDiv = document.getElementById("score") as HTMLDivElement;
+  scoreDiv.innerText = `-$${getScore()}`;
 }
 
 function XYToContainerKey(x: number, y: number) {
@@ -259,7 +265,8 @@ const executeAction = (action: Action) => {
       const newLine = document.createElement("div");
       newLine.innerText = action.data.text;
       readLineDiv.innerText = action.data.text;
-      linesContainer.appendChild(newLine);
+      linesContainer.prepend(newLine);
+      linesContainer.scrollTo(0, 0);
     }
     const dialogEntry = Object.entries(dialog).find(([key, value]) => {
       return value === action.data.text || key === action.data.readoutKey;
@@ -269,12 +276,6 @@ const executeAction = (action: Action) => {
       audioVoice.load();
       audioVoice.currentTime = 0;
       audioVoice.play();
-    }
-
-    if (linesContainer.childElementCount > 4) {
-      const targetChild =
-        linesContainer.children[linesContainer.childElementCount - 5];
-      targetChild.setAttribute("style", "display: none");
     }
   }
   if (action.type === "CREATURE_RUN") {
@@ -358,6 +359,7 @@ function attemptToEject(code: string) {
 }
 
 function gameLoop() {
+  updateScore();
   // TODO: update for GAME game state instead of READY
   if (gameState.state === "GAME") {
     updateCreature();
@@ -700,8 +702,9 @@ const onGameEnd = () => {
     "missionSuccess",
     "AnomalyNotActive",
     "totalFine",
-    { text: "9120", group: numberStrings(9120) },
-    "dollars"
+    { text: String(getScore()), group: numberStrings(getScore()) },
+    "credits",
+    "thankYou"
   );
 };
 

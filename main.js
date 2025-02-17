@@ -74,15 +74,21 @@ const containersFlat = containers.reduce((acc, row) => {
     acc.push(...row);
     return acc;
 }, []);
-function containerKeyToXY(key) {
-    for (let y = 0; y < H; y++) {
-        for (let x = 0; x < W; x++) {
-            if (containers[y][x] === key) {
-                return { x, y };
-            }
+function getScore() {
+    let score = 0;
+    Object.values(gameState.cargo).forEach((cargo) => {
+        if (cargo.ejected) {
+            score += 250;
         }
-    }
-    return null;
+        else {
+            score += (cargo.damage / HEAVY_DAMAGE) * 250;
+        }
+    });
+    return Math.floor(score / 10) * 10;
+}
+function updateScore() {
+    const scoreDiv = document.getElementById("score");
+    scoreDiv.innerText = `-$${getScore()}`;
 }
 function XYToContainerKey(x, y) {
     if (x > 8 || y > 3) {
@@ -228,7 +234,8 @@ const executeAction = (action) => {
             const newLine = document.createElement("div");
             newLine.innerText = action.data.text;
             readLineDiv.innerText = action.data.text;
-            linesContainer.appendChild(newLine);
+            linesContainer.prepend(newLine);
+            linesContainer.scrollTo(0, 0);
         }
         const dialogEntry = Object.entries(dialog).find(([key, value]) => {
             return value === action.data.text || key === action.data.readoutKey;
@@ -238,10 +245,6 @@ const executeAction = (action) => {
             audioVoice.load();
             audioVoice.currentTime = 0;
             audioVoice.play();
-        }
-        if (linesContainer.childElementCount > 4) {
-            const targetChild = linesContainer.children[linesContainer.childElementCount - 5];
-            targetChild.setAttribute("style", "display: none");
         }
     }
     if (action.type === "CREATURE_RUN") {
@@ -313,6 +316,7 @@ function attemptToEject(code) {
     return { result: true };
 }
 function gameLoop() {
+    updateScore();
     // TODO: update for GAME game state instead of READY
     if (gameState.state === "GAME") {
         updateCreature();
@@ -574,7 +578,7 @@ const onGameEnd = () => {
     gameState.queuedActions = [];
     onkeydown = () => { };
     onkeyup = () => { };
-    addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: "9120", group: numberStrings(9120) }, "dollars");
+    addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: String(getScore()), group: numberStrings(getScore()) }, "credits", "thankYou");
 };
 audioVoice.addEventListener("ended", () => {
     advanceQueuedAction();
