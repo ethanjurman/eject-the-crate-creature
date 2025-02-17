@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const initMenuAudio = (audioElement, buttonElement, iconElement, inputElement) => {
-    inputElement.addEventListener("input", () => {
-        audioElement.volume = Number(inputElement.value);
-    });
+const initMenuAudio = (audioElement, buttonElement, iconElement, inputElement, onChangeInput = (newVal) => {
+    audioElement.volume = Number(newVal);
+}) => {
+    inputElement.addEventListener("input", () => onChangeInput(inputElement.value));
     buttonElement.onclick = () => {
         if (audioElement.paused) {
             iconElement.src = "./icon-stop.png";
@@ -48,5 +48,8 @@ const soundEffectsPlayIcon = document.querySelector("#test-audio-game > img");
 const musicPlayIcon = document.querySelector("#test-audio-music > img");
 // init
 initMenuAudio(ttsForMenu, testSpeechVolumeButton, ttsPlayIcon, ttsVolumeInput);
-initMenuAudio(soundEffectsForMenu, testGameVolumeButton, soundEffectsPlayIcon, gameVolumeInput);
+initMenuAudio(soundEffectsForMenu, testGameVolumeButton, soundEffectsPlayIcon, gameVolumeInput, (newVal) => {
+    soundEffectsForMenu.setAttribute("data-volume-max", newVal);
+    soundEffectsForMenu.volume = Number(newVal);
+});
 initMenuAudio(musicForMenu, testMusicVolumeButton, musicPlayIcon, musicVolumeInput);

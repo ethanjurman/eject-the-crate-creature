@@ -46,6 +46,7 @@ const gameContinueButton = document.getElementById(
   "game-continue"
 ) as HTMLButtonElement;
 const gameMenu = document.getElementById("menu") as HTMLDivElement;
+const keysVisual = document.getElementById("keys") as HTMLDivElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
 
 let dialog: Record<string, string>;
@@ -80,6 +81,10 @@ const containers = [
   ["KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK", "KeyL"],
   ["KeyZ", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM", "Comma", "Period"],
 ];
+const containersFlat = containers.reduce<string[]>((acc, row) => {
+  acc.push(...row);
+  return acc;
+}, []);
 
 function containerKeyToXY(key: string) {
   for (let y = 0; y < H; y++) {
@@ -100,14 +105,20 @@ function XYToContainerKey(x: number, y: number) {
 }
 
 function getCargoAtXY(x: number, y: number) {
-  if (x > 8 || y > 3) {
+  if (x > W || y > H) {
     return null;
   }
   if (x < 0 || y < 0) {
     return null;
   }
   const containerKey = containers[Math.floor(y)][Math.floor(x)];
-  return gameState.cargo[containerKey] || { damage: 0, ejected: false };
+  return gameState.cargo[containerKey]
+    ? { ...gameState.cargo[containerKey], containerKey }
+    : {
+        damage: 0,
+        ejected: false,
+        containerKey,
+      };
 }
 
 let frame = 0;
@@ -128,7 +139,6 @@ let gameState: GameState = {
   unqueuedActions: [],
   cargo: {},
   showCreatureAndDamage: false,
-  ejecting: false,
 };
 
 function addQueuedAction(action: Action) {
@@ -151,7 +161,35 @@ function updateCreatureDelta(newDeltaX: number, newDeltaY: number) {
   gameState.creature.deltaY = newDeltaY;
 }
 
-async function getAudioDuration(url: string) {
+function numberStrings(number: number): string[] {
+  let strings: string[] = [];
+
+  const units = [
+    { value: 1000, name: "thousand" },
+    { value: 100, name: "hundred" },
+  ];
+
+  let numberRemaining = number;
+
+  for (const unit of units) {
+    const count = Math.floor(numberRemaining / unit.value);
+    if (count > 0) {
+      strings.push(String(count));
+      strings.push(unit.name);
+      numberRemaining -= count * unit.value;
+    }
+  }
+
+  if (numberRemaining > 0) {
+    strings.push("and");
+    strings.push(String(numberRemaining));
+  }
+
+  return strings;
+}
+
+async function getAudioDuration(text: string | number) {
+  const url = `./audio/en/${text}.wav`;
   try {
     // Fetch the audio file as a Blob
     const response = await fetch(url);
@@ -177,24 +215,29 @@ async function getAudioDuration(url: string) {
   }
 }
 
-async function addTextAction(...texts: string[]) {
+async function addTextAction(
+  ...texts: (string | { text: string; group: string[] })[]
+) {
   for (let index = 0; index < texts.length; index++) {
     const text = texts[index];
-    const prevText = texts[index - 1] || "";
-    if (prevText) {
-      const audioDuration = await getAudioDuration(
-        `./audio/en/${prevText}.wav`
-      );
-      addQueuedAction({
-        type: "TEXT",
-        delay: 1000 * (audioDuration as number),
-        data: { text: dialog[text], id: Math.random() },
+    if (typeof text === "object") {
+      text.group.forEach((item, itemIndex) => {
+        addQueuedAction({
+          type: "TEXT",
+          data: {
+            text: text.text,
+            readoutKey: item,
+            id: Math.random(),
+            partOfPrevious: itemIndex !== 0,
+          },
+          delay: 60000,
+        });
       });
     } else {
       addQueuedAction({
         type: "TEXT",
-        delay: 0,
         data: { text: dialog[text], id: Math.random() },
+        delay: index === 0 ? 0 : 60000,
       });
     }
   }
@@ -209,11 +252,17 @@ const executeAction = (action: Action) => {
   }
   if (action.type === "TEXT") {
     const linesContainer = document.getElementById("lines") as HTMLElement;
-    const newLine = document.createElement("div");
-    newLine.innerText = action.data.text;
-    linesContainer.appendChild(newLine);
-    const dialogEntry = Object.entries(dialog).find(([__key, value]) => {
-      return value === action.data.text;
+    if (!action.data.partOfPrevious) {
+      const readLineDiv = document.getElementById(
+        "read-line"
+      ) as HTMLDivElement;
+      const newLine = document.createElement("div");
+      newLine.innerText = action.data.text;
+      readLineDiv.innerText = action.data.text;
+      linesContainer.appendChild(newLine);
+    }
+    const dialogEntry = Object.entries(dialog).find(([key, value]) => {
+      return value === action.data.text || key === action.data.readoutKey;
     });
     if (dialogEntry?.[0]) {
       audioVoice.src = `./audio/en/${dialogEntry[0]}.wav`;
@@ -295,16 +344,16 @@ function attemptToEject(code: string) {
     addTextAction(code, "ejectingFailedAlreadyEjected");
     return { result: false, reason: "ejected" };
   }
-  if (gameState.cargo[code]?.damage > HEAVY_DAMAGE) {
-    addTextAction(code, "ejectingFailedTooDamaged");
-    return { result: false, reason: "damage" };
-  }
+  // removing condition where too damaged to eject
+  // if (gameState.cargo[code]?.damage > HEAVY_DAMAGE) {
+  //   addTextAction(code, "ejectingFailedTooDamaged");
+  //   return { result: false, reason: "damage" };
+  // }
   gameState.cargo[code] = {
     ...gameState.cargo[code],
     ejected: true,
   };
-  addTextAction(code, "isEjected", "ejectingDisengaged");
-  gameState.ejecting = false;
+  addTextAction(code, "isEjected");
   return { result: true };
 }
 
@@ -322,13 +371,14 @@ function gameLoop() {
 
   // execute queued actions
   gameState.queuedActions = gameState.queuedActions.map((action, index) => {
-    if (index !== 0) {
-      return action;
+    if (index === 0) {
+      return {
+        ...action,
+        delay: action.delay - 1000 / fps,
+      };
     }
-    return {
-      ...action,
-      delay: action.delay - 1000 / fps,
-    };
+
+    return action;
   });
   gameState.unqueuedActions = gameState.unqueuedActions.map((action) => {
     return {
@@ -341,43 +391,81 @@ function gameLoop() {
 }
 
 document.onkeydown = function (e) {
-  // key code for space
+  const isEjectingKeyPressedMenu = e.code.toLowerCase().includes("shift");
+  // highlight menu key
+  document
+    .getElementById(`key-${e.code}`)
+    ?.setAttribute("style", "color: black; background: #2fff00;");
+  if (isEjectingKeyPressedMenu) {
+    Array.from(document.getElementsByClassName("key-Shift")).forEach((div) =>
+      div.setAttribute("style", "color: black; background: #2fff00;")
+    );
+  }
+
+  // game logic
   if (e.code === "Enter" && gameState.state === "READY") {
     gameState.state = "GAME";
-  }
-  if (e.code === "Space") {
-    advanceQueuedAction();
-  }
-  if (e.code === "Slash") {
-    if (localStorage.getItem("debugger") === "true") {
-      gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
-    }
+    addTextAction("missionBegin");
   }
   if (e.code === "Escape") {
     gameState.state = "MENU";
     gameMenu.setAttribute("style", "");
   }
-  keysPressed.add(e.code);
-  gameState.radarKey = e.code;
-  if (gameState.ejecting) {
-    attemptToEject(e.code);
+  if (e.code === "Space") {
+    advanceQueuedAction();
+  }
+  if (gameState.state === "GAME") {
+    if (e.code === "Slash") {
+      if (localStorage.getItem("debugger") === "true") {
+        gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
+      }
+    }
+
+    keysPressed.add(e.code);
+    const isEjectingKeyPressed = Array.from(keysPressed).some((key) =>
+      key.toLowerCase().includes("shift")
+    );
+    if (containersFlat.includes(e.code)) {
+      gameState.radarKey = e.code;
+    }
+
+    if (isEjectingKeyPressed && gameState.radarKey) {
+      const res = attemptToEject(gameState.radarKey);
+      // check if creature was ejected
+      const creatureCargoUnit = getCargoAtXY(
+        gameState.creature.x,
+        gameState.creature.y
+      );
+      console.log(creatureCargoUnit?.containerKey, gameState.radarKey);
+      if (creatureCargoUnit?.containerKey === gameState.radarKey) {
+        onGameEnd();
+      }
+    }
+    keysVisual.textContent = gameState.radarKey;
   }
 };
 
 document.onkeyup = function (e) {
-  keysPressed.delete(e.code);
-  if (e.code === "ShiftLeft" && !gameState.ejecting) {
-    addTextAction("ejectingEngaged");
-    gameState.ejecting = true;
-    return;
+  const isEjectingKeyPressedMenu = e.code.toLowerCase().includes("shift");
+
+  // unhighlight menu key
+  document.getElementById(`key-${e.code}`)?.setAttribute("style", "");
+  if (isEjectingKeyPressedMenu) {
+    Array.from(document.getElementsByClassName("key-Shift")).forEach((div) =>
+      div.setAttribute("style", "")
+    );
   }
-  if (e.code === "ShiftLeft" && gameState.ejecting) {
-    addTextAction("ejectingDisengaged");
-    gameState.ejecting = false;
-    return;
-  }
-  if (gameState.radarKey === e.code) {
-    gameState.radarKey = [...keysPressed][0] || "";
+
+  // game logic
+  if (gameState.state === "GAME") {
+    keysPressed.delete(e.code);
+    if (gameState.radarKey === e.code) {
+      gameState.radarKey =
+        [...keysPressed].find((key) =>
+          containersFlat.find((containerKey) => containerKey === key)
+        ) || "";
+    }
+    keysVisual.textContent = gameState.radarKey;
   }
 };
 
@@ -516,32 +604,24 @@ function getKeyLocation() {
 function playRadarSound() {
   const keyLocation = getKeyLocation();
   const { creature } = gameState;
-  if (gameState.radarKey && !gameState.ejecting && keyLocation) {
+  if (gameState.radarKey && keyLocation) {
     const { x: x1, y: y1 } = keyLocation;
     const { x: x2, y: y2 } = creature;
     const distance = Math.sqrt(
       Math.pow(x2 - x1, 2) / W + Math.pow(y2 - y1, 2) / H
     );
 
-    audio.volume = keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0;
-
-    // const angle =
-    //   angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
-    //   0;
+    const maxVol = Number(audio.getAttribute("data-volume-max"));
+    audio.volume =
+      (keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0) * maxVol;
 
     audio.playbackRate = Math.max(Math.min(1.5 - distance, 2), 0.2);
-
-    // audio.playbackRate =
-    //   creature.behavior === "RUN"
-    //     ? Math.max(Math.PI / 2 - angle, 0.2)
-    //     : Math.max(Math.min(1.5 - distance, 2), 0.2);
 
     if (audio.paused) {
       audio.play();
     }
   }
   if (!gameState.radarKey) {
-    audio.volume = 0;
     if (!audio.paused) {
       audio.pause();
     }
@@ -568,24 +648,31 @@ gameStartButton.onclick = () => {
   gameStartButton.setAttribute("style", "display: none");
   gameContinueButton.setAttribute("style", "");
   music.play();
-  addTextAction(
-    "opening1",
-    "opening2",
-    "opening3",
-    "opening4",
-    "opening5",
-    "opening6",
-    "opening7",
-    "opening8",
-    "opening9",
-    "opening10",
-    "opening11",
-    "opening12",
-    "opening13"
-  );
+  const hasOpening =
+    (document.getElementById("opening-select") as HTMLSelectElement).value ===
+    "ON";
+  if (hasOpening) {
+    addTextAction(
+      "opening1",
+      "opening2",
+      "opening3",
+      "opening4",
+      "opening5",
+      "opening6",
+      "opening7",
+      "opening8",
+      "opening9",
+      "opening10",
+      "opening11",
+      "opening12",
+      "opening13"
+    );
+  } else {
+    addTextAction("opening13");
+  }
   addQueuedAction({
     type: "GAME_STATE_UPDATE",
-    delay: 0,
+    delay: 100,
     data: { state: "READY", id: Math.random() },
   });
 };
@@ -600,3 +687,24 @@ setInterval(() => {
   fps = frame - lastFrameCount;
   lastFrameCount = frame;
 }, 1000);
+
+const onGameEnd = () => {
+  music.pause();
+  audio.pause();
+  gameState.state = "END";
+  gameState.radarKey = "";
+  gameState.queuedActions = [];
+  onkeydown = () => {};
+  onkeyup = () => {};
+  addTextAction(
+    "missionSuccess",
+    "AnomalyNotActive",
+    "totalFine",
+    { text: "9120", group: numberStrings(9120) },
+    "dollars"
+  );
+};
+
+audioVoice.addEventListener("ended", () => {
+  advanceQueuedAction();
+});

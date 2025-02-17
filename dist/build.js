@@ -10,10 +10,11 @@ function updateVisualizer() {
     const effectiveDuration = audioPlayer.duration / audioPlayer.playbackRate;
     // For example: 0.241 sec / 0.25 ≈ 0.964 sec
     // Calculate the visualizer's height (e.g., volume 1 → 360px)
-    const visHeight = audioPlayer.volume * 360;
+    const volumeMax = Number(audioPlayer.getAttribute("data-volume-max"));
+    const visHeight = (audioPlayer.volume / volumeMax) * 360;
     // Update the inline styles:
     audioVis.style.height = `${visHeight}px`;
-    audioVis.style.background = audioPlayer.volume === 0 ? "black" : "#2fff00"; // neon green when active
+    audioVis.style.background = "#2fff00"; // neon green when active
     // Set the animation so the bar “grows” from 0 to full height in sync with the beep
     audioVis.style.animation = `${effectiveDuration}s infinite beep`;
 }
@@ -37,7 +38,7 @@ function throttle(fn, wait) {
         }
     };
 }
-const throttledUpdateVisualizer = throttle(updateVisualizer, 1000);
+const throttledUpdateVisualizer = throttle(updateVisualizer, 250);
 // When audio plays, update the visualizer
 audioPlayer.addEventListener("play", updateVisualizer);
 // Update if volume or playback rate changes
@@ -90,6 +91,7 @@ const canvas = document.getElementById("canvas");
 const gameStartButton = document.getElementById("game-start");
 const gameContinueButton = document.getElementById("game-continue");
 const gameMenu = document.getElementById("menu");
+const keysVisual = document.getElementById("keys");
 const ctx = canvas.getContext("2d");
 let dialog;
 fetch("./audio/dialog.txt").then((res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -120,6 +122,10 @@ const containers = [
     ["KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK", "KeyL"],
     ["KeyZ", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM", "Comma", "Period"],
 ];
+const containersFlat = containers.reduce((acc, row) => {
+    acc.push(...row);
+    return acc;
+}, []);
 function containerKeyToXY(key) {
     for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
@@ -137,14 +143,19 @@ function XYToContainerKey(x, y) {
     return containers[y][x];
 }
 function getCargoAtXY(x, y) {
-    if (x > 8 || y > 3) {
+    if (x > W || y > H) {
         return null;
     }
     if (x < 0 || y < 0) {
         return null;
     }
     const containerKey = containers[Math.floor(y)][Math.floor(x)];
-    return gameState.cargo[containerKey] || { damage: 0, ejected: false };
+    return gameState.cargo[containerKey]
+        ? Object.assign(Object.assign({}, gameState.cargo[containerKey]), { containerKey }) : {
+        damage: 0,
+        ejected: false,
+        containerKey,
+    };
 }
 let frame = 0;
 const keysPressed = new Set();
@@ -162,7 +173,6 @@ let gameState = {
     unqueuedActions: [],
     cargo: {},
     showCreatureAndDamage: false,
-    ejecting: false,
 };
 function addQueuedAction(action) {
     gameState.queuedActions.push(action);
@@ -180,8 +190,30 @@ function updateCreatureDelta(newDeltaX, newDeltaY) {
     gameState.creature.deltaX = newDeltaX;
     gameState.creature.deltaY = newDeltaY;
 }
-function getAudioDuration(url) {
+function numberStrings(number) {
+    let strings = [];
+    const units = [
+        { value: 1000, name: "thousand" },
+        { value: 100, name: "hundred" },
+    ];
+    let numberRemaining = number;
+    for (const unit of units) {
+        const count = Math.floor(numberRemaining / unit.value);
+        if (count > 0) {
+            strings.push(String(count));
+            strings.push(unit.name);
+            numberRemaining -= count * unit.value;
+        }
+    }
+    if (numberRemaining > 0) {
+        strings.push("and");
+        strings.push(String(numberRemaining));
+    }
+    return strings;
+}
+function getAudioDuration(text) {
     return __awaiter(this, void 0, void 0, function* () {
+        const url = `./audio/en/${text}.wav`;
         try {
             // Fetch the audio file as a Blob
             const response = yield fetch(url);
@@ -209,20 +241,25 @@ function addTextAction(...texts) {
     return __awaiter(this, void 0, void 0, function* () {
         for (let index = 0; index < texts.length; index++) {
             const text = texts[index];
-            const prevText = texts[index - 1] || "";
-            if (prevText) {
-                const audioDuration = yield getAudioDuration(`./audio/en/${prevText}.wav`);
-                addQueuedAction({
-                    type: "TEXT",
-                    delay: 1000 * audioDuration,
-                    data: { text: dialog[text], id: Math.random() },
+            if (typeof text === "object") {
+                text.group.forEach((item, itemIndex) => {
+                    addQueuedAction({
+                        type: "TEXT",
+                        data: {
+                            text: text.text,
+                            readoutKey: item,
+                            id: Math.random(),
+                            partOfPrevious: itemIndex !== 0,
+                        },
+                        delay: 60000,
+                    });
                 });
             }
             else {
                 addQueuedAction({
                     type: "TEXT",
-                    delay: 0,
                     data: { text: dialog[text], id: Math.random() },
+                    delay: index === 0 ? 0 : 60000,
                 });
             }
         }
@@ -238,11 +275,15 @@ const executeAction = (action) => {
     }
     if (action.type === "TEXT") {
         const linesContainer = document.getElementById("lines");
-        const newLine = document.createElement("div");
-        newLine.innerText = action.data.text;
-        linesContainer.appendChild(newLine);
-        const dialogEntry = Object.entries(dialog).find(([__key, value]) => {
-            return value === action.data.text;
+        if (!action.data.partOfPrevious) {
+            const readLineDiv = document.getElementById("read-line");
+            const newLine = document.createElement("div");
+            newLine.innerText = action.data.text;
+            readLineDiv.innerText = action.data.text;
+            linesContainer.appendChild(newLine);
+        }
+        const dialogEntry = Object.entries(dialog).find(([key, value]) => {
+            return value === action.data.text || key === action.data.readoutKey;
         });
         if (dialogEntry === null || dialogEntry === void 0 ? void 0 : dialogEntry[0]) {
             audioVoice.src = `./audio/en/${dialogEntry[0]}.wav`;
@@ -309,18 +350,18 @@ const executeAction = (action) => {
     return false;
 };
 function attemptToEject(code) {
-    var _a, _b;
+    var _a;
     if ((_a = gameState.cargo[code]) === null || _a === void 0 ? void 0 : _a.ejected) {
         addTextAction(code, "ejectingFailedAlreadyEjected");
         return { result: false, reason: "ejected" };
     }
-    if (((_b = gameState.cargo[code]) === null || _b === void 0 ? void 0 : _b.damage) > HEAVY_DAMAGE) {
-        addTextAction(code, "ejectingFailedTooDamaged");
-        return { result: false, reason: "damage" };
-    }
+    // removing condition where too damaged to eject
+    // if (gameState.cargo[code]?.damage > HEAVY_DAMAGE) {
+    //   addTextAction(code, "ejectingFailedTooDamaged");
+    //   return { result: false, reason: "damage" };
+    // }
     gameState.cargo[code] = Object.assign(Object.assign({}, gameState.cargo[code]), { ejected: true });
-    addTextAction(code, "isEjected", "ejectingDisengaged");
-    gameState.ejecting = false;
+    addTextAction(code, "isEjected");
     return { result: true };
 }
 function gameLoop() {
@@ -335,10 +376,10 @@ function gameLoop() {
     }
     // execute queued actions
     gameState.queuedActions = gameState.queuedActions.map((action, index) => {
-        if (index !== 0) {
-            return action;
+        if (index === 0) {
+            return Object.assign(Object.assign({}, action), { delay: action.delay - 1000 / fps });
         }
-        return Object.assign(Object.assign({}, action), { delay: action.delay - 1000 / fps });
+        return action;
     });
     gameState.unqueuedActions = gameState.unqueuedActions.map((action) => {
         return Object.assign(Object.assign({}, action), { delay: action.delay - 1000 / fps });
@@ -347,42 +388,65 @@ function gameLoop() {
     gameState.unqueuedActions = gameState.unqueuedActions.filter(executeAction);
 }
 document.onkeydown = function (e) {
-    // key code for space
+    var _a;
+    const isEjectingKeyPressedMenu = e.code.toLowerCase().includes("shift");
+    // highlight menu key
+    (_a = document
+        .getElementById(`key-${e.code}`)) === null || _a === void 0 ? void 0 : _a.setAttribute("style", "color: black; background: #2fff00;");
+    if (isEjectingKeyPressedMenu) {
+        Array.from(document.getElementsByClassName("key-Shift")).forEach((div) => div.setAttribute("style", "color: black; background: #2fff00;"));
+    }
+    // game logic
     if (e.code === "Enter" && gameState.state === "READY") {
         gameState.state = "GAME";
-    }
-    if (e.code === "Space") {
-        advanceQueuedAction();
-    }
-    if (e.code === "Slash") {
-        if (localStorage.getItem("debugger") === "true") {
-            gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
-        }
+        addTextAction("missionBegin");
     }
     if (e.code === "Escape") {
         gameState.state = "MENU";
         gameMenu.setAttribute("style", "");
     }
-    keysPressed.add(e.code);
-    gameState.radarKey = e.code;
-    if (gameState.ejecting) {
-        attemptToEject(e.code);
+    if (e.code === "Space") {
+        advanceQueuedAction();
+    }
+    if (gameState.state === "GAME") {
+        if (e.code === "Slash") {
+            if (localStorage.getItem("debugger") === "true") {
+                gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
+            }
+        }
+        keysPressed.add(e.code);
+        const isEjectingKeyPressed = Array.from(keysPressed).some((key) => key.toLowerCase().includes("shift"));
+        if (containersFlat.includes(e.code)) {
+            gameState.radarKey = e.code;
+        }
+        if (isEjectingKeyPressed && gameState.radarKey) {
+            const res = attemptToEject(gameState.radarKey);
+            // check if creature was ejected
+            const creatureCargoUnit = getCargoAtXY(gameState.creature.x, gameState.creature.y);
+            console.log(creatureCargoUnit === null || creatureCargoUnit === void 0 ? void 0 : creatureCargoUnit.containerKey, gameState.radarKey);
+            if ((creatureCargoUnit === null || creatureCargoUnit === void 0 ? void 0 : creatureCargoUnit.containerKey) === gameState.radarKey) {
+                onGameEnd();
+            }
+        }
+        keysVisual.textContent = gameState.radarKey;
     }
 };
 document.onkeyup = function (e) {
-    keysPressed.delete(e.code);
-    if (e.code === "ShiftLeft" && !gameState.ejecting) {
-        addTextAction("ejectingEngaged");
-        gameState.ejecting = true;
-        return;
+    var _a;
+    const isEjectingKeyPressedMenu = e.code.toLowerCase().includes("shift");
+    // unhighlight menu key
+    (_a = document.getElementById(`key-${e.code}`)) === null || _a === void 0 ? void 0 : _a.setAttribute("style", "");
+    if (isEjectingKeyPressedMenu) {
+        Array.from(document.getElementsByClassName("key-Shift")).forEach((div) => div.setAttribute("style", ""));
     }
-    if (e.code === "ShiftLeft" && gameState.ejecting) {
-        addTextAction("ejectingDisengaged");
-        gameState.ejecting = false;
-        return;
-    }
-    if (gameState.radarKey === e.code) {
-        gameState.radarKey = [...keysPressed][0] || "";
+    // game logic
+    if (gameState.state === "GAME") {
+        keysPressed.delete(e.code);
+        if (gameState.radarKey === e.code) {
+            gameState.radarKey =
+                [...keysPressed].find((key) => containersFlat.find((containerKey) => containerKey === key)) || "";
+        }
+        keysVisual.textContent = gameState.radarKey;
     }
 };
 function drawContainers() {
@@ -496,25 +560,19 @@ function getKeyLocation() {
 function playRadarSound() {
     const keyLocation = getKeyLocation();
     const { creature } = gameState;
-    if (gameState.radarKey && !gameState.ejecting && keyLocation) {
+    if (gameState.radarKey && keyLocation) {
         const { x: x1, y: y1 } = keyLocation;
         const { x: x2, y: y2 } = creature;
         const distance = Math.sqrt(Math.pow(x2 - x1, 2) / W + Math.pow(y2 - y1, 2) / H);
-        audio.volume = keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0;
-        // const angle =
-        //   angleTowards(keyLocation, creature, creature.deltaX, creature.deltaY) ||
-        //   0;
+        const maxVol = Number(audio.getAttribute("data-volume-max"));
+        audio.volume =
+            (keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0) * maxVol;
         audio.playbackRate = Math.max(Math.min(1.5 - distance, 2), 0.2);
-        // audio.playbackRate =
-        //   creature.behavior === "RUN"
-        //     ? Math.max(Math.PI / 2 - angle, 0.2)
-        //     : Math.max(Math.min(1.5 - distance, 2), 0.2);
         if (audio.paused) {
             audio.play();
         }
     }
     if (!gameState.radarKey) {
-        audio.volume = 0;
         if (!audio.paused) {
             audio.pause();
         }
@@ -537,10 +595,17 @@ gameStartButton.onclick = () => {
     gameStartButton.setAttribute("style", "display: none");
     gameContinueButton.setAttribute("style", "");
     music.play();
-    addTextAction("opening1", "opening2", "opening3", "opening4", "opening5", "opening6", "opening7", "opening8", "opening9", "opening10", "opening11", "opening12", "opening13");
+    const hasOpening = document.getElementById("opening-select").value ===
+        "ON";
+    if (hasOpening) {
+        addTextAction("opening1", "opening2", "opening3", "opening4", "opening5", "opening6", "opening7", "opening8", "opening9", "opening10", "opening11", "opening12", "opening13");
+    }
+    else {
+        addTextAction("opening13");
+    }
     addQueuedAction({
         type: "GAME_STATE_UPDATE",
-        delay: 0,
+        delay: 100,
         data: { state: "READY", id: Math.random() },
     });
 };
@@ -553,12 +618,25 @@ setInterval(() => {
     fps = frame - lastFrameCount;
     lastFrameCount = frame;
 }, 1000);
+const onGameEnd = () => {
+    music.pause();
+    audio.pause();
+    gameState.state = "END";
+    gameState.radarKey = "";
+    gameState.queuedActions = [];
+    onkeydown = () => { };
+    onkeyup = () => { };
+    addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: "9120", group: numberStrings(9120) }, "dollars");
+};
+audioVoice.addEventListener("ended", () => {
+    advanceQueuedAction();
+});
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const initMenuAudio = (audioElement, buttonElement, iconElement, inputElement) => {
-    inputElement.addEventListener("input", () => {
-        audioElement.volume = Number(inputElement.value);
-    });
+const initMenuAudio = (audioElement, buttonElement, iconElement, inputElement, onChangeInput = (newVal) => {
+    audioElement.volume = Number(newVal);
+}) => {
+    inputElement.addEventListener("input", () => onChangeInput(inputElement.value));
     buttonElement.onclick = () => {
         if (audioElement.paused) {
             iconElement.src = "./icon-stop.png";
@@ -603,7 +681,10 @@ const soundEffectsPlayIcon = document.querySelector("#test-audio-game > img");
 const musicPlayIcon = document.querySelector("#test-audio-music > img");
 // init
 initMenuAudio(ttsForMenu, testSpeechVolumeButton, ttsPlayIcon, ttsVolumeInput);
-initMenuAudio(soundEffectsForMenu, testGameVolumeButton, soundEffectsPlayIcon, gameVolumeInput);
+initMenuAudio(soundEffectsForMenu, testGameVolumeButton, soundEffectsPlayIcon, gameVolumeInput, (newVal) => {
+    soundEffectsForMenu.setAttribute("data-volume-max", newVal);
+    soundEffectsForMenu.volume = Number(newVal);
+});
 initMenuAudio(musicForMenu, testMusicVolumeButton, musicPlayIcon, musicVolumeInput);
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });

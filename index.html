@@ -22,6 +22,10 @@
         font-weight: bolder;
         text-shadow: #00da27 0 0 var(--font-glow, 4px);
       }
+      body {
+        max-width: 1000px;
+        margin: 12px auto;
+      }
       div {
         padding-bottom: 12px;
       }
@@ -67,6 +71,7 @@
         border: 4px solid #2fff00;
         border-radius: 20px;
         display: inline-block;
+        min-width: 710px;
       }
       button {
         border: 2px solid #2fff00;
@@ -95,6 +100,38 @@
       .menu-line > div {
         padding-bottom: 0px;
       }
+      #keys {
+        justify-self: center;
+      }
+      .menu-frame {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .cargo-tiny {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+        gap: 2px;
+        padding-bottom: 2px;
+      }
+      .cargo-tiny > div {
+        border: 2px solid #2fff00;
+        padding: 0px;
+        font-size: 10px;
+      }
+      .cargo-tiny-ejects {
+        display: flex;
+        gap: 2px;
+        justify-content: space-between;
+      }
+      .cargo-tiny-ejects > div {
+        border: 2px solid #2fff00;
+        padding: 0px;
+        font-size: 10px;
+      }
+      #read-line {
+        display: none;
+      }
     </style>
     <script>
       var exports = {};
@@ -104,7 +141,13 @@
   <body>
     <audio id="music" loop src="./audio/music.wav"></audio>
     <audio id="voice" src="./audio/en/opening1.wav"></audio>
-    <audio preload id="beep" loop="true" src="./boop.wav"></audio>
+    <audio
+      preload
+      id="beep"
+      loop="true"
+      src="./boop.wav"
+      data-volume-max="0.5"
+    ></audio>
     <div id="read-line" aria-live="assertive"></div>
     <div id="lines"></div>
     <!-- game -->
@@ -116,85 +159,162 @@
         id="canvas"
       ></canvas>
     </div>
+    <div id="keys"></div>
 
     <!-- menu -->
     <div id="menu" class="centered-div" aria-label="menu">
       <div>EJECT THE CRATE CREATURE</div>
       <div><i>a game by Ethan Jurman</i></div>
       <br />
-      <div class="menu-line">
-        Font:
-        <select id="font-selection" name="fonts">
-          <option value="monospace" selected>Monospace</option>
-          <option value="Atkinson-Hyperlegible">Atkinson Hyperlegible</option>
-        </select>
-      </div>
-      <div class="menu-line">
-        Font glow:
-        <select id="font-glow" name="font glow">
-          <option value="4px" selected>ON</option>
-          <option value="0px">OFF</option>
-        </select>
-      </div>
-      <div class="menu-line">
-        In Game Text to Speech:
-        <select name="in-game-text-to-speech">
-          <option value="ON" selected>ON</option>
-          <option value="OFF">OFF</option>
-        </select>
-      </div>
-      <div class="menu-line">
-        Text to Speech Volume:
+      <div class="menu-frame">
         <div>
-          <input
-            type="range"
-            id="tts-volume-input"
-            name="tts volume"
-            min="0"
-            max="1"
-            step="0.05"
-          />
-          <button id="test-audio-speech" aria-label="test text to speech">
-            <img class="icon" src="./icon-play.png" />
-          </button>
+          <div>SETTINGS:</div>
+          <div class="menu-line">
+            Font:
+            <select id="font-selection" name="fonts">
+              <option value="monospace" selected>Monospace</option>
+              <option value="Atkinson-Hyperlegible">
+                Atkinson Hyperlegible
+              </option>
+            </select>
+          </div>
+          <div class="menu-line">
+            Font glow:
+            <select id="font-glow" name="font glow">
+              <option value="4px" selected>ON</option>
+              <option value="0px">OFF</option>
+            </select>
+          </div>
+          <div class="menu-line">
+            In Game Text to Speech:
+            <select name="in-game-text-to-speech">
+              <option value="ON" selected>ON</option>
+              <option value="OFF">OFF</option>
+            </select>
+          </div>
+          <div class="menu-line">
+            Opening:
+            <select id="opening-select" name="opening-select">
+              <option value="ON" selected>ON</option>
+              <option value="OFF">OFF</option>
+            </select>
+          </div>
+          <div class="menu-line">
+            Text to Speech Volume:
+            <div>
+              <input
+                type="range"
+                id="tts-volume-input"
+                name="tts volume"
+                min="0"
+                max="1"
+                step="0.05"
+              />
+              <button id="test-audio-speech" aria-label="test text to speech">
+                <img class="icon" src="./icon-play.png" />
+              </button>
+            </div>
+          </div>
+          <div class="menu-line">
+            Sound Effects Volume:
+            <div>
+              <input
+                type="range"
+                id="game-volume-input"
+                name="game volume"
+                min="0"
+                max="1"
+                step="0.05"
+              />
+              <button id="test-audio-game" aria-label="test in game audio">
+                <img class="icon" src="./icon-play.png" />
+              </button>
+            </div>
+          </div>
+          <div class="menu-line">
+            Music Volume:
+            <div>
+              <input
+                type="range"
+                id="music-volume-input"
+                name="music volume"
+                min="0"
+                max="1"
+                value="0.5"
+                step="0.05"
+              />
+              <button id="test-audio-music" aria-label="test music audio">
+                <img class="icon" src="./icon-play.png" />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="menu-line">
-        Sound Effects Volume:
         <div>
-          <input
-            type="range"
-            id="game-volume-input"
-            name="game volume"
-            min="0"
-            max="1"
-            step="0.05"
-          />
-          <button id="test-audio-game" aria-label="test in game audio">
-            <img class="icon" src="./icon-play.png" />
-          </button>
+          <div>HOW TO PLAY:</div>
+          <p>
+            A creature is roaming the spacecraft. Use the keys on your keyboard
+            to activate it's radar, pinpoint the creatures location (the radar
+            will increase both volume and frequency if you are using a radar
+            close to the creature), and then eject it (by pushing both the key
+            associated with the containment unit, and shift). The longer the
+            creature is out causing damage, the more the corporation will fine
+            you, and the less profit you'll make! So hurry up and stop that
+            creature!
+          </p>
+          <p>
+            Below is a tiny cargo model, and you can test that your keyboard is
+            working and matches the expected result. As well, push the SHIFT
+            keys to ensure that ejecting is possible.
+          </p>
+          <p>Push SPACE to advance text to speech audio</p>
+          <div class="cargo-tiny">
+            <div id="key-Digit1">1</div>
+            <div id="key-Digit2">2</div>
+            <div id="key-Digit3">3</div>
+            <div id="key-Digit4">4</div>
+            <div id="key-Digit5">5</div>
+            <div id="key-Digit6">6</div>
+            <div id="key-Digit7">7</div>
+            <div id="key-Digit8">8</div>
+            <div id="key-Digit9">9</div>
+            <div id="key-KeyQ">Q</div>
+            <div id="key-KeyW">W</div>
+            <div id="key-KeyE">E</div>
+            <div id="key-KeyR">R</div>
+            <div id="key-KeyT">T</div>
+            <div id="key-KeyY">Y</div>
+            <div id="key-KeyU">U</div>
+            <div id="key-KeyI">I</div>
+            <div id="key-KeyO">O</div>
+            <div id="key-KeyA">A</div>
+            <div id="key-KeyS">S</div>
+            <div id="key-KeyD">D</div>
+            <div id="key-KeyF">F</div>
+            <div id="key-KeyG">G</div>
+            <div id="key-KeyH">H</div>
+            <div id="key-KeyJ">J</div>
+            <div id="key-KeyK">K</div>
+            <div id="key-KeyL">L</div>
+            <div id="key-KeyZ">Z</div>
+            <div id="key-KeyX">X</div>
+            <div id="key-KeyC">C</div>
+            <div id="key-KeyV">V</div>
+            <div id="key-KeyB">B</div>
+            <div id="key-KeyN">N</div>
+            <div id="key-KeyM">M</div>
+            <div id="key-Comma">,</div>
+            <div id="key-Period">.</div>
+          </div>
+          <div class="cargo-tiny-ejects">
+            <div class="key-Shift">EJECTING KEY</div>
+            <div id="key-Space">ADVANCE TEXT</div>
+            <div class="key-Shift">EJECTING KEY</div>
+          </div>
         </div>
-      </div>
-      <div class="menu-line">
-        Music Volume:
         <div>
-          <input
-            type="range"
-            id="music-volume-input"
-            name="music volume"
-            min="0"
-            max="1"
-            value="0.5"
-            step="0.05"
-          />
-          <button id="test-audio-music" aria-label="test music audio">
-            <img class="icon" src="./icon-play.png" />
-          </button>
+          <button id="game-start">start</button>
+          <button style="display: none" id="game-continue">continue</button>
         </div>
-      </div>
-      <div>
-        <button id="game-start">start</button>
-        <button style="display: none" id="game-continue">continue</button>
       </div>
     </div>
   </body>

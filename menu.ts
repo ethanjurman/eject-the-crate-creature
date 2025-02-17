@@ -6,11 +6,14 @@ const initMenuAudio = (
   audioElement: HTMLAudioElement,
   buttonElement: HTMLButtonElement,
   iconElement: HTMLImageElement,
-  inputElement: HTMLInputElement
+  inputElement: HTMLInputElement,
+  onChangeInput = (newVal: string) => {
+    audioElement.volume = Number(newVal);
+  }
 ) => {
-  inputElement.addEventListener("input", () => {
-    audioElement.volume = Number(inputElement.value);
-  });
+  inputElement.addEventListener("input", () =>
+    onChangeInput(inputElement.value)
+  );
 
   buttonElement.onclick = () => {
     if (audioElement.paused) {
@@ -90,7 +93,11 @@ initMenuAudio(
   soundEffectsForMenu,
   testGameVolumeButton,
   soundEffectsPlayIcon,
-  gameVolumeInput
+  gameVolumeInput,
+  (newVal) => {
+    soundEffectsForMenu.setAttribute("data-volume-max", newVal);
+    soundEffectsForMenu.volume = Number(newVal);
+  }
 );
 
 initMenuAudio(

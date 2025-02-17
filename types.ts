@@ -3,7 +3,9 @@ export type TextAction = {
   type: "TEXT";
   data: {
     text: string;
+    readoutKey?: string; // fallback for text
     id: number;
+    partOfPrevious?: boolean;
   };
 };
 
@@ -69,5 +71,4 @@ export type GameState = {
     }
   >;
   showCreatureAndDamage: boolean;
-  ejecting: boolean;
 };
