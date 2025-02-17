@@ -46,6 +46,7 @@ const gameStartButton = document.getElementById(
 const gameContinueButton = document.getElementById(
   "game-continue"
 ) as HTMLButtonElement;
+const gameResetButton = document.getElementById("reset") as HTMLButtonElement;
 const gameMenu = document.getElementById("menu") as HTMLDivElement;
 const keysVisual = document.getElementById("keys") as HTMLDivElement;
 const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
@@ -109,6 +110,19 @@ function updateScore() {
   }
 }
 
+function getXYForContainerKey(key: string) {
+  if (!containersFlat.includes(key)) {
+    return null;
+  }
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) {
+      if (key === containers[y][x]) {
+        return { x, y };
+      }
+    }
+  }
+}
+
 function XYToContainerKey(x: number, y: number) {
   if (x > 8 || y > 3) {
     return "";
@@ -117,7 +131,7 @@ function XYToContainerKey(x: number, y: number) {
 }
 
 function getCargoAtXY(x: number, y: number) {
-  if (x > W || y > H) {
+  if (x >= W || y >= H) {
     return null;
   }
   if (x < 0 || y < 0) {
@@ -147,10 +161,10 @@ const keysPressed = new Set<string>();
 let gameState: GameState = {
   state: "MENU",
   creature: {
-    x: Math.random() * W,
-    y: Math.random() * H,
-    deltaX: 0.005,
-    deltaY: 0.005,
+    x: Math.floor(Math.random() * (W - 1)) + 0.5,
+    y: Math.floor(Math.random() * (H - 1)) + 0.5,
+    deltaX: 0,
+    deltaY: 0,
     behavior: "ATTACK",
   },
   radarKey: "",
@@ -342,7 +356,7 @@ function attemptToEject(code: string) {
     ...gameState.cargo[code],
     ejected: true,
   };
-  addTextAction(code, "isEjected");
+  addTextAction(code, "isEjected", "AnomalyStillActive");
   return { result: true };
 }
 
@@ -473,12 +487,17 @@ document.onkeydown = function (e) {
     );
     if (containersFlat.includes(e.code)) {
       gameState.radarKey = e.code;
+      const containerXY = getXYForContainerKey(gameState.radarKey);
+      if (gameState.radarKey && containerXY) {
+        const { x, y } = containerXY;
+        keysVisual.textContent = `${gameState.radarKey} container unit at ${x}-${y} location`;
+      }
     }
 
     if (isEjectingKeyPressed && gameState.radarKey) {
       attemptToEject(gameState.radarKey);
     }
-    keysVisual.textContent = gameState.radarKey;
+    // keysVisual.textContent = gameState.radarKey;
   }
 };
 
@@ -502,7 +521,16 @@ document.onkeyup = function (e) {
           containersFlat.find((containerKey) => containerKey === key)
         ) || "";
     }
-    keysVisual.textContent = gameState.radarKey;
+    const containerXY = getXYForContainerKey(gameState.radarKey);
+    // new radar key, read it out
+    if (containerXY) {
+      const { x, y } = containerXY;
+      keysVisual.textContent = `${gameState.radarKey} container unit at ${x}-${y} location`;
+    }
+    if (!gameState.radarKey) {
+      keysVisual.textContent = ``;
+    }
+    // keysVisual.textContent = gameState.radarKey;
   }
 };
 
@@ -565,37 +593,18 @@ function drawCreature() {
 
 function updateCreature() {
   const { creature } = gameState;
-  // invert delta if hitting a wall
-  if (creature.x + creature.deltaX < 0 || creature.x + creature.deltaX > W) {
-    updateCreatureDelta(-creature.deltaX, creature.deltaY);
-  }
-  if (creature.y + creature.deltaY < 0 || creature.y + creature.deltaY > H) {
-    updateCreatureDelta(creature.deltaX, -creature.deltaY);
-  }
-  // invert delta if hitting a containment that's ejected
-  if (
-    gameState.cargo[
-      XYToContainerKey(
-        Math.floor(creature.x + creature.deltaX),
-        Math.floor(creature.y)
-      )
-    ]?.ejected
-  ) {
-    updateCreatureDelta(-creature.deltaX, creature.deltaY);
-  }
-  if (
-    gameState.cargo[
-      XYToContainerKey(
-        Math.floor(creature.x),
-        Math.floor(creature.y + creature.deltaY)
-      )
-    ]?.ejected
-  ) {
-    updateCreatureDelta(creature.deltaX, -creature.deltaY);
+  const targetCargo = getCargoAtXY(
+    creature.x + creature.deltaX * (fps / 120),
+    creature.y + creature.deltaY * (fps / 120)
+  );
+  if (!targetCargo) {
+    updateCreatureDelta(-creature.deltaX, -creature.deltaY);
+  } else if (targetCargo?.ejected) {
+    updateCreatureDelta(-creature.deltaX, -creature.deltaY);
   }
 
   if (creature.behavior === "ATTACK") {
-    updateCreatureDelta((Math.random() - 0.5) / 50, (Math.random() - 0.5) / 50);
+    updateCreatureDelta(0, 0);
   }
   const damage = creature.behavior === "ATTACK" ? 30 : 5;
   const cargoKey = XYToContainerKey(
@@ -610,13 +619,13 @@ function updateCreature() {
   } else {
     gameState.cargo[cargoKey] = {
       ...gameState.cargo[cargoKey],
-      damage: gameState.cargo[cargoKey].damage + damage,
+      damage: Math.min(gameState.cargo[cargoKey].damage + damage, HEAVY_DAMAGE),
     };
   }
   // add run action if cargo is heavily damage
   // TODO add run action if ejection was just attempted and failed
   const cargoDamage = gameState.cargo[cargoKey]?.damage;
-  if (cargoDamage > HEAVY_DAMAGE && creature.behavior !== "RUN") {
+  if (cargoDamage >= HEAVY_DAMAGE && creature.behavior !== "RUN") {
     if (gameState.unqueuedActions.length === 0) {
       addUnqueuedAction({
         type: "CREATURE_RUN",
@@ -630,8 +639,8 @@ function updateCreature() {
   }
 
   const newCreatureState: GameState["creature"] = {
-    x: Math.max(Math.min(creature.x + creature.deltaX, W), 0),
-    y: Math.max(Math.min(creature.y + creature.deltaY, H), 0),
+    x: Math.max(Math.min(creature.x + creature.deltaX * (fps / 120), W), 0),
+    y: Math.max(Math.min(creature.y + creature.deltaY * (fps / 120), H), 0),
     deltaX: creature.deltaX,
     deltaY: creature.deltaY,
     behavior: creature.behavior,
@@ -661,6 +670,10 @@ function playRadarSound() {
     );
 
     const maxVol = Number(audio.getAttribute("data-volume-max"));
+    audio.setAttribute(
+      "data-volume-set",
+      String(keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0)
+    );
     audio.volume =
       (keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0) * maxVol;
 
@@ -732,6 +745,10 @@ gameContinueButton.onclick = () => {
   gameMenu.setAttribute("style", "display: none");
 };
 
+gameResetButton.onclick = () => {
+  window.location.reload();
+};
+
 let lastFrameCount = 0;
 setInterval(() => {
   fps = frame - lastFrameCount;
@@ -752,6 +769,7 @@ const onGameEnd = () => {
     { text: String(getScore()), group: numberStrings(getScore()) },
     "credits",
     "thankYou",
+    "resetGame",
     "fullReadout"
   );
 };

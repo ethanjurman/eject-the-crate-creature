@@ -39,6 +39,7 @@ const audioVoice = document.getElementById("voice");
 const canvas = document.getElementById("canvas");
 const gameStartButton = document.getElementById("game-start");
 const gameContinueButton = document.getElementById("game-continue");
+const gameResetButton = document.getElementById("reset");
 const gameMenu = document.getElementById("menu");
 const keysVisual = document.getElementById("keys");
 const ctx = canvas.getContext("2d");
@@ -96,6 +97,18 @@ function updateScore() {
         scoreDiv.innerText = `-$${newScore}`;
     }
 }
+function getXYForContainerKey(key) {
+    if (!containersFlat.includes(key)) {
+        return null;
+    }
+    for (let x = 0; x < W; x++) {
+        for (let y = 0; y < H; y++) {
+            if (key === containers[y][x]) {
+                return { x, y };
+            }
+        }
+    }
+}
 function XYToContainerKey(x, y) {
     if (x > 8 || y > 3) {
         return "";
@@ -103,7 +116,7 @@ function XYToContainerKey(x, y) {
     return containers[y][x];
 }
 function getCargoAtXY(x, y) {
-    if (x > W || y > H) {
+    if (x >= W || y >= H) {
         return null;
     }
     if (x < 0 || y < 0) {
@@ -129,10 +142,10 @@ const keysPressed = new Set();
 let gameState = {
     state: "MENU",
     creature: {
-        x: Math.random() * W,
-        y: Math.random() * H,
-        deltaX: 0.005,
-        deltaY: 0.005,
+        x: Math.floor(Math.random() * (W - 1)) + 0.5,
+        y: Math.floor(Math.random() * (H - 1)) + 0.5,
+        deltaX: 0,
+        deltaY: 0,
         behavior: "ATTACK",
     },
     radarKey: "",
@@ -300,7 +313,7 @@ function attemptToEject(code) {
         return { result: false, reason: "ejected" };
     }
     gameState.cargo[code] = Object.assign(Object.assign({}, gameState.cargo[code]), { ejected: true });
-    addTextAction(code, "isEjected");
+    addTextAction(code, "isEjected", "AnomalyStillActive");
     return { result: true };
 }
 function gameLoop() {
@@ -399,11 +412,16 @@ document.onkeydown = function (e) {
         const isEjectingKeyPressed = Array.from(keysPressed).some((key) => key.toLowerCase().includes("shift"));
         if (containersFlat.includes(e.code)) {
             gameState.radarKey = e.code;
+            const containerXY = getXYForContainerKey(gameState.radarKey);
+            if (gameState.radarKey && containerXY) {
+                const { x, y } = containerXY;
+                keysVisual.textContent = `${gameState.radarKey} container unit at ${x}-${y} location`;
+            }
         }
         if (isEjectingKeyPressed && gameState.radarKey) {
             attemptToEject(gameState.radarKey);
         }
-        keysVisual.textContent = gameState.radarKey;
+        // keysVisual.textContent = gameState.radarKey;
     }
 };
 document.onkeyup = function (e) {
@@ -421,7 +439,16 @@ document.onkeyup = function (e) {
             gameState.radarKey =
                 [...keysPressed].find((key) => containersFlat.find((containerKey) => containerKey === key)) || "";
         }
-        keysVisual.textContent = gameState.radarKey;
+        const containerXY = getXYForContainerKey(gameState.radarKey);
+        // new radar key, read it out
+        if (containerXY) {
+            const { x, y } = containerXY;
+            keysVisual.textContent = `${gameState.radarKey} container unit at ${x}-${y} location`;
+        }
+        if (!gameState.radarKey) {
+            keysVisual.textContent = ``;
+        }
+        // keysVisual.textContent = gameState.radarKey;
     }
 };
 function drawContainers() {
@@ -479,24 +506,17 @@ function drawCreature() {
     ctx.stroke();
 }
 function updateCreature() {
-    var _a, _b, _c;
+    var _a;
     const { creature } = gameState;
-    // invert delta if hitting a wall
-    if (creature.x + creature.deltaX < 0 || creature.x + creature.deltaX > W) {
-        updateCreatureDelta(-creature.deltaX, creature.deltaY);
+    const targetCargo = getCargoAtXY(creature.x + creature.deltaX * (fps / 120), creature.y + creature.deltaY * (fps / 120));
+    if (!targetCargo) {
+        updateCreatureDelta(-creature.deltaX, -creature.deltaY);
     }
-    if (creature.y + creature.deltaY < 0 || creature.y + creature.deltaY > H) {
-        updateCreatureDelta(creature.deltaX, -creature.deltaY);
-    }
-    // invert delta if hitting a containment that's ejected
-    if ((_a = gameState.cargo[XYToContainerKey(Math.floor(creature.x + creature.deltaX), Math.floor(creature.y))]) === null || _a === void 0 ? void 0 : _a.ejected) {
-        updateCreatureDelta(-creature.deltaX, creature.deltaY);
-    }
-    if ((_b = gameState.cargo[XYToContainerKey(Math.floor(creature.x), Math.floor(creature.y + creature.deltaY))]) === null || _b === void 0 ? void 0 : _b.ejected) {
-        updateCreatureDelta(creature.deltaX, -creature.deltaY);
+    else if (targetCargo === null || targetCargo === void 0 ? void 0 : targetCargo.ejected) {
+        updateCreatureDelta(-creature.deltaX, -creature.deltaY);
     }
     if (creature.behavior === "ATTACK") {
-        updateCreatureDelta((Math.random() - 0.5) / 50, (Math.random() - 0.5) / 50);
+        updateCreatureDelta(0, 0);
     }
     const damage = creature.behavior === "ATTACK" ? 30 : 5;
     const cargoKey = XYToContainerKey(Math.floor(creature.x), Math.floor(creature.y));
@@ -507,12 +527,12 @@ function updateCreature() {
         };
     }
     else {
-        gameState.cargo[cargoKey] = Object.assign(Object.assign({}, gameState.cargo[cargoKey]), { damage: gameState.cargo[cargoKey].damage + damage });
+        gameState.cargo[cargoKey] = Object.assign(Object.assign({}, gameState.cargo[cargoKey]), { damage: Math.min(gameState.cargo[cargoKey].damage + damage, HEAVY_DAMAGE) });
     }
     // add run action if cargo is heavily damage
     // TODO add run action if ejection was just attempted and failed
-    const cargoDamage = (_c = gameState.cargo[cargoKey]) === null || _c === void 0 ? void 0 : _c.damage;
-    if (cargoDamage > HEAVY_DAMAGE && creature.behavior !== "RUN") {
+    const cargoDamage = (_a = gameState.cargo[cargoKey]) === null || _a === void 0 ? void 0 : _a.damage;
+    if (cargoDamage >= HEAVY_DAMAGE && creature.behavior !== "RUN") {
         if (gameState.unqueuedActions.length === 0) {
             addUnqueuedAction({
                 type: "CREATURE_RUN",
@@ -525,8 +545,8 @@ function updateCreature() {
         }
     }
     const newCreatureState = {
-        x: Math.max(Math.min(creature.x + creature.deltaX, W), 0),
-        y: Math.max(Math.min(creature.y + creature.deltaY, H), 0),
+        x: Math.max(Math.min(creature.x + creature.deltaX * (fps / 120), W), 0),
+        y: Math.max(Math.min(creature.y + creature.deltaY * (fps / 120), H), 0),
         deltaX: creature.deltaX,
         deltaY: creature.deltaY,
         behavior: creature.behavior,
@@ -551,6 +571,7 @@ function playRadarSound() {
         const { x: x2, y: y2 } = creature;
         const distance = Math.sqrt(Math.pow(x2 - x1, 2) / W + Math.pow(y2 - y1, 2) / H);
         const maxVol = Number(audio.getAttribute("data-volume-max"));
+        audio.setAttribute("data-volume-set", String(keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0));
         audio.volume =
             (keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0) * maxVol;
         audio.playbackRate = Math.max(Math.min(1.5 - distance, 2), 0.2);
@@ -600,6 +621,9 @@ gameContinueButton.onclick = () => {
     audioVoice.play();
     gameMenu.setAttribute("style", "display: none");
 };
+gameResetButton.onclick = () => {
+    window.location.reload();
+};
 let lastFrameCount = 0;
 setInterval(() => {
     fps = frame - lastFrameCount;
@@ -612,7 +636,7 @@ const onGameEnd = () => {
     gameState.radarKey = "";
     gameState.queuedActions = [];
     keysVisual.textContent = "";
-    addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: String(getScore()), group: numberStrings(getScore()) }, "credits", "thankYou", "fullReadout");
+    addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: String(getScore()), group: numberStrings(getScore()) }, "credits", "thankYou", "resetGame", "fullReadout");
 };
 audioVoice.addEventListener("ended", () => {
     advanceQueuedAction();

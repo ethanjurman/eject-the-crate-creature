@@ -1,10 +1,24 @@
 <html>
   <head>
     <!-- favicon -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="manifest" href="/site.webmanifest" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="./apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="./favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="./favicon-16x16.png"
+    />
+    <link rel="manifest" href="./site.webmanifest" />
 
     <title>Eject The Crate Creature</title>
     <style>
@@ -20,8 +34,12 @@
         border-radius: 2px;
       }
       @font-face {
-        font-family: "Atkinson-Hyperlegible";
-        src: url("./AtkinsonHyperlegible-Regular.ttf");
+        font-family: "Atkinson-Hyperlegible Next";
+        src: url("./AtkinsonHyperlegibleNext-VariableFont_wght.ttf");
+      }
+      @font-face {
+        font-family: "Atkinson-Hyperlegible Mono";
+        src: url("./AtkinsonHyperlegibleMono-VariableFont_wght.ttf");
       }
       input {
         accent-color: #2fff00;
@@ -32,6 +50,7 @@
         font-family: var(--dynamic-font, monospace);
         font-weight: bolder;
         text-shadow: #00da27 0 0 var(--font-glow, 4px);
+        font-size: 12px;
       }
       body {
         max-width: 1000px;
@@ -191,26 +210,20 @@
   </head>
   <body>
     <audio id="music" loop src="./audio/music.wav"></audio>
-    <audio id="voice" src="./audio/en/opening1.wav"></audio>
-    <audio
-      preload
-      id="beep"
-      loop="true"
-      src="./boop.wav"
-      data-volume-max="0.5"
-    ></audio>
+    <audio id="voice" src="./audio/en/title.wav"></audio>
+    <audio preload id="beep" loop="true" src="./boop.wav"></audio>
     <div id="read-line" aria-live="assertive"></div>
     <div id="top-text">
       <div></div>
       <div id="lines"></div>
-      <div id="score">-$0</div>
+      <div id="score" aria-hidden="true">-$0</div>
     </div>
     <!-- game -->
     <div class="flex-horz">
       <div id="audio-visualizer"></div>
       <canvas
         role="application"
-        aria-label="neon green grid 4 by 9, all the squares are blank, press a key to highlight the space in the radar"
+        aria-label="neon green grid 4 squares tall and 9 squares wide, all the squares are blank, press a key to highlight the space in the radar"
         id="canvas"
       ></canvas>
     </div>
@@ -228,8 +241,11 @@
             Font:
             <select id="font-selection" name="fonts">
               <option value="monospace" selected>Monospace</option>
-              <option value="Atkinson-Hyperlegible">
-                Atkinson Hyperlegible
+              <option value="Atkinson-Hyperlegible Next">
+                Atkinson Hyperlegible Next
+              </option>
+              <option value="Atkinson-Hyperlegible Mono">
+                Atkinson Hyperlegible Mono
               </option>
             </select>
           </div>
@@ -241,7 +257,7 @@
             </select>
           </div>
           <div class="menu-line">
-            Opening:
+            Opening Narration:
             <select id="opening-select" name="opening-select">
               <option value="ON" selected>ON</option>
               <option value="OFF">OFF</option>
@@ -264,7 +280,7 @@
             </div>
           </div>
           <div class="menu-line">
-            Text to Speech Speed:
+            Text & Speech Speed:
             <div>
               <input
                 type="range"
@@ -335,7 +351,11 @@
             keys to ensure that ejecting is possible.
           </p>
           <p>Push SPACE to advance text to speech audio</p>
-          <div class="cargo-tiny">
+          <div
+            role="application"
+            aria-label="below is a 4 by 9 grid showing each key on a keyboard, lit up when that key is held down"
+            class="cargo-tiny"
+          >
             <div id="key-Digit1">1</div>
             <div id="key-Digit2">2</div>
             <div id="key-Digit3">3</div>
@@ -378,11 +398,13 @@
             <div id="key-Space">ADVANCE TEXT</div>
             <div class="key-Shift">EJECTING KEY</div>
           </div>
+          <div id="readout-tiny-cargo"></div>
         </div>
       </div>
       <div>
         <button id="game-start">start</button>
         <button style="display: none" id="game-continue">continue</button>
+        <button id="reset">reset</button>
       </div>
     </div>
   </body>

@@ -10,8 +10,8 @@ function updateVisualizer() {
     const effectiveDuration = audioPlayer.duration / audioPlayer.playbackRate;
     // For example: 0.241 sec / 0.25 ≈ 0.964 sec
     // Calculate the visualizer's height (e.g., volume 1 → 360px)
-    const volumeMax = Number(audioPlayer.getAttribute("data-volume-max"));
-    const visHeight = (audioPlayer.volume / volumeMax) * 360;
+    const volumeTarget = Number(audioPlayer.getAttribute("data-volume-set"));
+    const visHeight = volumeTarget * 360;
     // Update the inline styles:
     audioVis.style.height = `${visHeight}px`;
     audioVis.style.background = "#2fff00"; // neon green when active
@@ -98,6 +98,7 @@ const audioVoice = document.getElementById("voice");
 const canvas = document.getElementById("canvas");
 const gameStartButton = document.getElementById("game-start");
 const gameContinueButton = document.getElementById("game-continue");
+const gameResetButton = document.getElementById("reset");
 const gameMenu = document.getElementById("menu");
 const keysVisual = document.getElementById("keys");
 const ctx = canvas.getContext("2d");
@@ -155,6 +156,18 @@ function updateScore() {
         scoreDiv.innerText = `-$${newScore}`;
     }
 }
+function getXYForContainerKey(key) {
+    if (!containersFlat.includes(key)) {
+        return null;
+    }
+    for (let x = 0; x < W; x++) {
+        for (let y = 0; y < H; y++) {
+            if (key === containers[y][x]) {
+                return { x, y };
+            }
+        }
+    }
+}
 function XYToContainerKey(x, y) {
     if (x > 8 || y > 3) {
         return "";
@@ -162,7 +175,7 @@ function XYToContainerKey(x, y) {
     return containers[y][x];
 }
 function getCargoAtXY(x, y) {
-    if (x > W || y > H) {
+    if (x >= W || y >= H) {
         return null;
     }
     if (x < 0 || y < 0) {
@@ -188,10 +201,10 @@ const keysPressed = new Set();
 let gameState = {
     state: "MENU",
     creature: {
-        x: Math.random() * W,
-        y: Math.random() * H,
-        deltaX: 0.005,
-        deltaY: 0.005,
+        x: Math.floor(Math.random() * (W - 1)) + 0.5,
+        y: Math.floor(Math.random() * (H - 1)) + 0.5,
+        deltaX: 0,
+        deltaY: 0,
         behavior: "ATTACK",
     },
     radarKey: "",
@@ -359,7 +372,7 @@ function attemptToEject(code) {
         return { result: false, reason: "ejected" };
     }
     gameState.cargo[code] = Object.assign(Object.assign({}, gameState.cargo[code]), { ejected: true });
-    addTextAction(code, "isEjected");
+    addTextAction(code, "isEjected", "AnomalyStillActive");
     return { result: true };
 }
 function gameLoop() {
@@ -458,11 +471,16 @@ document.onkeydown = function (e) {
         const isEjectingKeyPressed = Array.from(keysPressed).some((key) => key.toLowerCase().includes("shift"));
         if (containersFlat.includes(e.code)) {
             gameState.radarKey = e.code;
+            const containerXY = getXYForContainerKey(gameState.radarKey);
+            if (gameState.radarKey && containerXY) {
+                const { x, y } = containerXY;
+                keysVisual.textContent = `${gameState.radarKey} container unit at ${x}-${y} location`;
+            }
         }
         if (isEjectingKeyPressed && gameState.radarKey) {
             attemptToEject(gameState.radarKey);
         }
-        keysVisual.textContent = gameState.radarKey;
+        // keysVisual.textContent = gameState.radarKey;
     }
 };
 document.onkeyup = function (e) {
@@ -480,7 +498,16 @@ document.onkeyup = function (e) {
             gameState.radarKey =
                 [...keysPressed].find((key) => containersFlat.find((containerKey) => containerKey === key)) || "";
         }
-        keysVisual.textContent = gameState.radarKey;
+        const containerXY = getXYForContainerKey(gameState.radarKey);
+        // new radar key, read it out
+        if (containerXY) {
+            const { x, y } = containerXY;
+            keysVisual.textContent = `${gameState.radarKey} container unit at ${x}-${y} location`;
+        }
+        if (!gameState.radarKey) {
+            keysVisual.textContent = ``;
+        }
+        // keysVisual.textContent = gameState.radarKey;
     }
 };
 function drawContainers() {
@@ -538,24 +565,17 @@ function drawCreature() {
     ctx.stroke();
 }
 function updateCreature() {
-    var _a, _b, _c;
+    var _a;
     const { creature } = gameState;
-    // invert delta if hitting a wall
-    if (creature.x + creature.deltaX < 0 || creature.x + creature.deltaX > W) {
-        updateCreatureDelta(-creature.deltaX, creature.deltaY);
+    const targetCargo = getCargoAtXY(creature.x + creature.deltaX * (fps / 120), creature.y + creature.deltaY * (fps / 120));
+    if (!targetCargo) {
+        updateCreatureDelta(-creature.deltaX, -creature.deltaY);
     }
-    if (creature.y + creature.deltaY < 0 || creature.y + creature.deltaY > H) {
-        updateCreatureDelta(creature.deltaX, -creature.deltaY);
-    }
-    // invert delta if hitting a containment that's ejected
-    if ((_a = gameState.cargo[XYToContainerKey(Math.floor(creature.x + creature.deltaX), Math.floor(creature.y))]) === null || _a === void 0 ? void 0 : _a.ejected) {
-        updateCreatureDelta(-creature.deltaX, creature.deltaY);
-    }
-    if ((_b = gameState.cargo[XYToContainerKey(Math.floor(creature.x), Math.floor(creature.y + creature.deltaY))]) === null || _b === void 0 ? void 0 : _b.ejected) {
-        updateCreatureDelta(creature.deltaX, -creature.deltaY);
+    else if (targetCargo === null || targetCargo === void 0 ? void 0 : targetCargo.ejected) {
+        updateCreatureDelta(-creature.deltaX, -creature.deltaY);
     }
     if (creature.behavior === "ATTACK") {
-        updateCreatureDelta((Math.random() - 0.5) / 50, (Math.random() - 0.5) / 50);
+        updateCreatureDelta(0, 0);
     }
     const damage = creature.behavior === "ATTACK" ? 30 : 5;
     const cargoKey = XYToContainerKey(Math.floor(creature.x), Math.floor(creature.y));
@@ -566,12 +586,12 @@ function updateCreature() {
         };
     }
     else {
-        gameState.cargo[cargoKey] = Object.assign(Object.assign({}, gameState.cargo[cargoKey]), { damage: gameState.cargo[cargoKey].damage + damage });
+        gameState.cargo[cargoKey] = Object.assign(Object.assign({}, gameState.cargo[cargoKey]), { damage: Math.min(gameState.cargo[cargoKey].damage + damage, HEAVY_DAMAGE) });
     }
     // add run action if cargo is heavily damage
     // TODO add run action if ejection was just attempted and failed
-    const cargoDamage = (_c = gameState.cargo[cargoKey]) === null || _c === void 0 ? void 0 : _c.damage;
-    if (cargoDamage > HEAVY_DAMAGE && creature.behavior !== "RUN") {
+    const cargoDamage = (_a = gameState.cargo[cargoKey]) === null || _a === void 0 ? void 0 : _a.damage;
+    if (cargoDamage >= HEAVY_DAMAGE && creature.behavior !== "RUN") {
         if (gameState.unqueuedActions.length === 0) {
             addUnqueuedAction({
                 type: "CREATURE_RUN",
@@ -584,8 +604,8 @@ function updateCreature() {
         }
     }
     const newCreatureState = {
-        x: Math.max(Math.min(creature.x + creature.deltaX, W), 0),
-        y: Math.max(Math.min(creature.y + creature.deltaY, H), 0),
+        x: Math.max(Math.min(creature.x + creature.deltaX * (fps / 120), W), 0),
+        y: Math.max(Math.min(creature.y + creature.deltaY * (fps / 120), H), 0),
         deltaX: creature.deltaX,
         deltaY: creature.deltaY,
         behavior: creature.behavior,
@@ -610,6 +630,7 @@ function playRadarSound() {
         const { x: x2, y: y2 } = creature;
         const distance = Math.sqrt(Math.pow(x2 - x1, 2) / W + Math.pow(y2 - y1, 2) / H);
         const maxVol = Number(audio.getAttribute("data-volume-max"));
+        audio.setAttribute("data-volume-set", String(keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0));
         audio.volume =
             (keyLocation ? Math.min(Math.max(1 - distance, 0.1), 1) : 0) * maxVol;
         audio.playbackRate = Math.max(Math.min(1.5 - distance, 2), 0.2);
@@ -659,6 +680,9 @@ gameContinueButton.onclick = () => {
     audioVoice.play();
     gameMenu.setAttribute("style", "display: none");
 };
+gameResetButton.onclick = () => {
+    window.location.reload();
+};
 let lastFrameCount = 0;
 setInterval(() => {
     fps = frame - lastFrameCount;
@@ -671,15 +695,25 @@ const onGameEnd = () => {
     gameState.radarKey = "";
     gameState.queuedActions = [];
     keysVisual.textContent = "";
-    addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: String(getScore()), group: numberStrings(getScore()) }, "credits", "thankYou", "fullReadout");
+    addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: String(getScore()), group: numberStrings(getScore()) }, "credits", "thankYou", "resetGame", "fullReadout");
 };
 audioVoice.addEventListener("ended", () => {
     advanceQueuedAction();
 });
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const initMenuAudio = (audioElement, buttonElement, iconElement, inputElement, onChangeInput = (newVal) => {
+const saved = {
+    font: localStorage.getItem("font"),
+    glow: localStorage.getItem("glow"),
+    opening: localStorage.getItem("opening"),
+    ttsVolume: localStorage.getItem("ttsVolume"),
+    ttsSpeed: localStorage.getItem("ttsSpeed"),
+    seVolume: localStorage.getItem("seVolume"),
+    musicVolume: localStorage.getItem("musicVolume"),
+};
+const initMenuAudio = (localStorageKey, audioElement, buttonElement, iconElement, inputElement, onChangeInput = (newVal) => {
     audioElement.volume = Number(newVal);
+    localStorage.setItem(localStorageKey, newVal);
 }) => {
     inputElement.addEventListener("input", () => onChangeInput(inputElement.value));
     buttonElement.onclick = () => {
@@ -695,11 +729,17 @@ const initMenuAudio = (audioElement, buttonElement, iconElement, inputElement, o
 };
 const fontSelection = document.getElementById("font-selection");
 fontSelection.addEventListener("change", function () {
+    localStorage.setItem("font", this.value);
     document.documentElement.style.setProperty("--dynamic-font", this.value);
 });
 const fontGlowSelection = document.getElementById("font-glow");
 fontGlowSelection.addEventListener("change", function () {
+    localStorage.setItem("glow", this.value);
     document.documentElement.style.setProperty("--font-glow", this.value);
+});
+const openingNarrationSelection = document.getElementById("opening-select");
+openingNarrationSelection.addEventListener("change", function () {
+    localStorage.setItem("opening", this.value);
 });
 // audio volume adjusters
 const ttsVolumeInput = document.getElementById("tts-volume-input");
@@ -708,16 +748,16 @@ const gameVolumeInput = document.getElementById("game-volume-input");
 const musicVolumeInput = document.getElementById("music-volume-input");
 // audio elements on page
 const ttsForMenu = document.getElementById("voice");
-ttsForMenu.volume = 0.5;
-ttsForMenu.defaultPlaybackRate = 1;
+// ttsForMenu.volume = 0.5;
+// ttsForMenu.defaultPlaybackRate = 1;
 ttsForMenu.addEventListener("ended", () => {
     ttsPlayIcon.src = "./icon-play.png";
     ttsPlaySpeedIcon.src = "./icon-play.png";
 });
 const soundEffectsForMenu = document.getElementById("beep");
-soundEffectsForMenu.volume = 0.5;
+// soundEffectsForMenu.volume = 0.5;
 const musicForMenu = document.getElementById("music");
-musicForMenu.volume = 0.5;
+// musicForMenu.volume = 0.5;
 // test volume buttons
 const testSpeechVolumeButton = document.getElementById("test-audio-speech");
 const testSpeechSpeedButton = document.getElementById("test-audio-speech-speed");
@@ -728,16 +768,34 @@ const ttsPlayIcon = document.querySelector("#test-audio-speech > img");
 const ttsPlaySpeedIcon = document.querySelector("#test-audio-speech-speed > img");
 const soundEffectsPlayIcon = document.querySelector("#test-audio-game > img");
 const musicPlayIcon = document.querySelector("#test-audio-music > img");
+// setValues based on localStorage
+fontSelection.value = saved.font || "monospace";
+document.documentElement.style.setProperty("--dynamic-font", fontSelection.value);
+fontGlowSelection.value = saved.glow || "4px";
+document.documentElement.style.setProperty("--font-glow", fontGlowSelection.value);
+openingNarrationSelection.value = saved.opening || "ON";
+ttsVolumeInput.value = saved.ttsVolume || "0.5";
+ttsForMenu.volume = Number(ttsVolumeInput.value);
+ttsSpeedInput.value = saved.ttsSpeed || "1";
+ttsForMenu.playbackRate = Number(ttsSpeedInput.value);
+ttsForMenu.defaultPlaybackRate = Number(ttsSpeedInput.value);
+gameVolumeInput.value = saved.seVolume || "0.5";
+soundEffectsForMenu.setAttribute("data-volume-max", gameVolumeInput.value);
+console.log(gameVolumeInput.value, soundEffectsForMenu.volume);
+musicVolumeInput.value = saved.musicVolume || "0.5";
+musicForMenu.volume = Number(musicVolumeInput.value);
 // init
-initMenuAudio(ttsForMenu, testSpeechVolumeButton, ttsPlayIcon, ttsVolumeInput);
-initMenuAudio(ttsForMenu, testSpeechSpeedButton, ttsPlaySpeedIcon, ttsSpeedInput, (newVal) => {
+initMenuAudio("ttsVolume", ttsForMenu, testSpeechVolumeButton, ttsPlayIcon, ttsVolumeInput);
+initMenuAudio("ttsSpeed", ttsForMenu, testSpeechSpeedButton, ttsPlaySpeedIcon, ttsSpeedInput, (newVal) => {
+    localStorage.setItem("ttsSpeed", newVal);
     ttsForMenu.playbackRate = Number(newVal);
     ttsForMenu.defaultPlaybackRate = Number(newVal);
 });
-initMenuAudio(soundEffectsForMenu, testGameVolumeButton, soundEffectsPlayIcon, gameVolumeInput, (newVal) => {
+initMenuAudio("seVolume", soundEffectsForMenu, testGameVolumeButton, soundEffectsPlayIcon, gameVolumeInput, (newVal) => {
+    localStorage.setItem("seVolume", newVal);
     soundEffectsForMenu.setAttribute("data-volume-max", newVal);
     soundEffectsForMenu.volume = Number(newVal);
 });
-initMenuAudio(musicForMenu, testMusicVolumeButton, musicPlayIcon, musicVolumeInput);
+initMenuAudio("musicVolume", musicForMenu, testMusicVolumeButton, musicPlayIcon, musicVolumeInput);
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
