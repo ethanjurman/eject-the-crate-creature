@@ -17,6 +17,13 @@ function updateVisualizer() {
     audioVis.style.background = "#2fff00"; // neon green when active
     // Set the animation so the bar “grows” from 0 to full height in sync with the beep
     audioVis.style.animation = `${effectiveDuration}s infinite beep`;
+    // to catch if the audio was paused after this was triggered
+    setTimeout(() => {
+        if (audioPlayer.paused) {
+            audioVis.style.animation = "none";
+            audioVis.style.background = "black";
+        }
+    }, 0);
 }
 function throttle(fn, wait) {
     let isThrottled = false;

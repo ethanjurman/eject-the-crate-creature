@@ -8,6 +8,17 @@
 
     <title>Eject The Crate Creature</title>
     <style>
+      ::-webkit-scrollbar {
+        width: 1em;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2fff00;
+        border-radius: 2px;
+      }
+      ::-webkit-scrollbar-track {
+        box-shadow: inset 0 0 0px #000000;
+        border-radius: 2px;
+      }
       @font-face {
         font-family: "Atkinson-Hyperlegible";
         src: url("./AtkinsonHyperlegible-Regular.ttf");
@@ -93,21 +104,41 @@
         display: grid;
         grid-template-columns: 2fr 8fr 2fr;
       }
+      @keyframes blinking {
+        0% {
+          color: black;
+          text-shadow: none;
+        }
+        50% {
+          color: black;
+          text-shadow: none;
+        }
+        51% {
+          color: #2fff00;
+        }
+        100% {
+          color: #2fff00;
+        }
+      }
       #lines {
-        place-items: center;
         height: 5em;
         overflow: auto;
         display: flex;
         flex-direction: column-reverse;
       }
+      #lines > div:first-child:before {
+        content: "> ";
+        min-width: 2em;
+        animation: 1s infinite blinking;
+      }
       #score {
         margin: auto;
         background: none;
-        border: 4px solid;
+        border: 4px solid #ff0000;
         border-radius: 12px;
         padding: 4px;
-        color: red;
-        text-shadow: 0 0 9px RED;
+        color: #ff0000;
+        text-shadow: 0 0 var(--font-glow, 4px) #ff0000;
       }
       .menu-line {
         display: flex;
@@ -147,7 +178,8 @@
         font-size: 10px;
       }
       #read-line {
-        display: none;
+        color: black;
+        text-shadow: none;
       }
     </style>
     <script>

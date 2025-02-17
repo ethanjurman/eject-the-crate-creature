@@ -6,6 +6,7 @@ const H = 4;
 let fps = 60;
 
 const HEAVY_DAMAGE = 255 * 50;
+const MAX_SCORE = 10000;
 
 export function angleTowards(
   A: { x: number; y: number },
@@ -90,9 +91,11 @@ function getScore() {
   let score = 0;
   Object.values(gameState.cargo).forEach((cargo) => {
     if (cargo.ejected) {
-      score += 250;
+      score += Math.floor(MAX_SCORE / 36 / 10) * 10;
     } else {
-      score += (cargo.damage / HEAVY_DAMAGE) * 250;
+      score +=
+        Math.floor(((cargo.damage / HEAVY_DAMAGE) * (MAX_SCORE / 36)) / 10) *
+        10;
     }
   });
   return Math.floor(score / 10) * 10;
@@ -100,7 +103,10 @@ function getScore() {
 
 function updateScore() {
   const scoreDiv = document.getElementById("score") as HTMLDivElement;
-  scoreDiv.innerText = `-$${getScore()}`;
+  const newScore = getScore();
+  if (scoreDiv.innerText !== `-$${newScore}`) {
+    scoreDiv.innerText = `-$${newScore}`;
+  }
 }
 
 function XYToContainerKey(x: number, y: number) {
@@ -187,38 +193,13 @@ function numberStrings(number: number): string[] {
   }
 
   if (numberRemaining > 0) {
-    strings.push("and");
+    if (number > 100) {
+      strings.push("and");
+    }
     strings.push(String(numberRemaining));
   }
 
   return strings;
-}
-
-async function getAudioDuration(text: string | number) {
-  const url = `./audio/en/${text}.wav`;
-  try {
-    // Fetch the audio file as a Blob
-    const response = await fetch(url);
-    const blob = await response.blob();
-    const objectURL = URL.createObjectURL(blob);
-
-    // Create an audio element
-    const audio = new Audio();
-    audio.src = objectURL;
-
-    // Wait for metadata to load
-    return new Promise((resolve, reject) => {
-      audio.addEventListener("loadedmetadata", () => {
-        return resolve(audio.duration);
-      });
-
-      audio.addEventListener("error", (e) => {
-        reject("Failed to load audio metadata.");
-      });
-    });
-  } catch (error) {
-    console.error("Error fetching audio file:", error);
-  }
 }
 
 async function addTextAction(
@@ -243,7 +224,7 @@ async function addTextAction(
       addQueuedAction({
         type: "TEXT",
         data: { text: dialog[text], id: Math.random() },
-        delay: index === 0 ? 0 : 60000,
+        delay: gameState.queuedActions.length === 0 ? 0 : 60000,
       });
     }
   }
@@ -345,11 +326,6 @@ function attemptToEject(code: string) {
     addTextAction(code, "ejectingFailedAlreadyEjected");
     return { result: false, reason: "ejected" };
   }
-  // removing condition where too damaged to eject
-  // if (gameState.cargo[code]?.damage > HEAVY_DAMAGE) {
-  //   addTextAction(code, "ejectingFailedTooDamaged");
-  //   return { result: false, reason: "damage" };
-  // }
   gameState.cargo[code] = {
     ...gameState.cargo[code],
     ejected: true,
@@ -393,6 +369,13 @@ function gameLoop() {
 }
 
 document.onkeydown = function (e) {
+  // debugger code
+  if (e.code === "Slash") {
+    if (localStorage.getItem("debugger") === "true") {
+      gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
+    }
+  }
+
   const isEjectingKeyPressedMenu = e.code.toLowerCase().includes("shift");
   // highlight menu key
   document
@@ -409,6 +392,54 @@ document.onkeydown = function (e) {
     gameState.state = "GAME";
     addTextAction("missionBegin");
   }
+  if (e.code === "Enter" && gameState.state === "END") {
+    gameState.showCreatureAndDamage = true;
+    const ejectedCargos = Object.entries(gameState.cargo)
+      .filter(([__cargoKey, cargo]) => cargo.ejected)
+      .map(([cargoKey]) => cargoKey);
+    if (ejectedCargos.length > 1) {
+      ejectedCargos.splice(ejectedCargos.length - 1, 0, "and");
+    }
+
+    if (ejectedCargos.length > 0) {
+      addTextAction(...ejectedCargos, "wasEjected");
+    }
+
+    const heavilyDamagedCargos = Object.entries(gameState.cargo)
+      .filter(
+        ([__cargoKey, cargo]) => cargo.damage >= HEAVY_DAMAGE && !cargo.ejected
+      )
+      .map(([cargoKey]) => cargoKey);
+
+    if (heavilyDamagedCargos.length > 1) {
+      heavilyDamagedCargos.splice(heavilyDamagedCargos.length - 1, 0, "and");
+    }
+
+    if (heavilyDamagedCargos.length > 0) {
+      addTextAction(...heavilyDamagedCargos, "wasHeavilyDamaged");
+    }
+
+    Object.entries(gameState.cargo)
+      .filter(
+        ([__cargoKey, cargo]) =>
+          cargo.damage <= HEAVY_DAMAGE &&
+          !cargo.ejected &&
+          Math.floor(((cargo.damage / HEAVY_DAMAGE) * (MAX_SCORE / 36)) / 10) *
+            10 >
+            0
+      )
+      .forEach(([cargoKey, cargo]) => {
+        const damageCost =
+          Math.floor(((cargo.damage / HEAVY_DAMAGE) * (MAX_SCORE / 36)) / 10) *
+          10;
+        addTextAction(
+          cargoKey,
+          "wasDamaged",
+          { text: String(damageCost), group: numberStrings(damageCost) },
+          "credits"
+        );
+      });
+  }
   if (e.code === "Escape") {
     gameState.state = "MENU";
     gameMenu.setAttribute("style", "");
@@ -417,12 +448,6 @@ document.onkeydown = function (e) {
     advanceQueuedAction();
   }
   if (gameState.state === "GAME") {
-    if (e.code === "Slash") {
-      if (localStorage.getItem("debugger") === "true") {
-        gameState.showCreatureAndDamage = !gameState.showCreatureAndDamage;
-      }
-    }
-
     keysPressed.add(e.code);
     const isEjectingKeyPressed = Array.from(keysPressed).some((key) =>
       key.toLowerCase().includes("shift")
@@ -438,7 +463,6 @@ document.onkeydown = function (e) {
         gameState.creature.x,
         gameState.creature.y
       );
-      console.log(creatureCargoUnit?.containerKey, gameState.radarKey);
       if (creatureCargoUnit?.containerKey === gameState.radarKey) {
         onGameEnd();
       }
@@ -501,6 +525,18 @@ function drawContainers() {
       }
     }
   }
+  ctx.stroke();
+
+  // draw dashes
+  ctx.beginPath();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgb(47, 255, 0)";
+  // draw F dash
+  ctx.moveTo(PX_SIZE * 3.25, PX_SIZE * 2.9);
+  ctx.lineTo(PX_SIZE * 3.75, PX_SIZE * 2.9);
+  // draw J dash
+  ctx.moveTo(PX_SIZE * 6.25, PX_SIZE * 2.9);
+  ctx.lineTo(PX_SIZE * 6.75, PX_SIZE * 2.9);
   ctx.stroke();
 }
 
@@ -704,7 +740,8 @@ const onGameEnd = () => {
     "totalFine",
     { text: String(getScore()), group: numberStrings(getScore()) },
     "credits",
-    "thankYou"
+    "thankYou",
+    "fullReadout"
   );
 };
 
