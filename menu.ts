@@ -40,11 +40,12 @@ fontGlowSelection.addEventListener("change", function () {
   document.documentElement.style.setProperty("--font-glow", this.value);
 });
 
-const inGameTextToSpeech = document.getElementById("in-game-text-to-speech");
-
 // audio volume adjusters
 const ttsVolumeInput = document.getElementById(
   "tts-volume-input"
+) as HTMLInputElement;
+const ttsSpeedInput = document.getElementById(
+  "tts-speed-input"
 ) as HTMLInputElement;
 const gameVolumeInput = document.getElementById(
   "game-volume-input"
@@ -56,8 +57,10 @@ const musicVolumeInput = document.getElementById(
 // audio elements on page
 const ttsForMenu = document.getElementById("voice") as HTMLAudioElement;
 ttsForMenu.volume = 0.5;
+ttsForMenu.defaultPlaybackRate = 1;
 ttsForMenu.addEventListener("ended", () => {
   ttsPlayIcon.src = "./icon-play.png";
+  ttsPlaySpeedIcon.src = "./icon-play.png";
 });
 const soundEffectsForMenu = document.getElementById("beep") as HTMLAudioElement;
 soundEffectsForMenu.volume = 0.5;
@@ -67,6 +70,9 @@ musicForMenu.volume = 0.5;
 // test volume buttons
 const testSpeechVolumeButton = document.getElementById(
   "test-audio-speech"
+) as HTMLButtonElement;
+const testSpeechSpeedButton = document.getElementById(
+  "test-audio-speech-speed"
 ) as HTMLButtonElement;
 const testGameVolumeButton = document.getElementById(
   "test-audio-game"
@@ -79,6 +85,9 @@ const testMusicVolumeButton = document.getElementById(
 const ttsPlayIcon = document.querySelector(
   "#test-audio-speech > img"
 ) as HTMLImageElement;
+const ttsPlaySpeedIcon = document.querySelector(
+  "#test-audio-speech-speed > img"
+) as HTMLImageElement;
 const soundEffectsPlayIcon = document.querySelector(
   "#test-audio-game > img"
 ) as HTMLImageElement;
@@ -88,6 +97,17 @@ const musicPlayIcon = document.querySelector(
 
 // init
 initMenuAudio(ttsForMenu, testSpeechVolumeButton, ttsPlayIcon, ttsVolumeInput);
+
+initMenuAudio(
+  ttsForMenu,
+  testSpeechSpeedButton,
+  ttsPlaySpeedIcon,
+  ttsSpeedInput,
+  (newVal) => {
+    ttsForMenu.playbackRate = Number(newVal);
+    ttsForMenu.defaultPlaybackRate = Number(newVal);
+  }
+);
 
 initMenuAudio(
   soundEffectsForMenu,

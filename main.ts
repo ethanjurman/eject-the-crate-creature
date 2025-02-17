@@ -133,6 +133,13 @@ function getCargoAtXY(x: number, y: number) {
       };
 }
 
+function checkForCreatureEjected() {
+  const { x, y } = gameState.creature;
+  if (getCargoAtXY(x, y)?.ejected) {
+    onGameEnd();
+  }
+}
+
 let frame = 0;
 
 const keysPressed = new Set<string>();
@@ -206,6 +213,11 @@ async function addTextAction(
   ...texts: (string | { text: string; group: string[] })[]
 ) {
   for (let index = 0; index < texts.length; index++) {
+    const delay =
+      gameState.queuedActions.filter((action) => action.type === "TEXT")
+        .length === 0
+        ? 0
+        : 20000;
     const text = texts[index];
     if (typeof text === "object") {
       text.group.forEach((item, itemIndex) => {
@@ -217,14 +229,14 @@ async function addTextAction(
             id: Math.random(),
             partOfPrevious: itemIndex !== 0,
           },
-          delay: 60000,
+          delay,
         });
       });
     } else {
       addQueuedAction({
         type: "TEXT",
         data: { text: dialog[text], id: Math.random() },
-        delay: gameState.queuedActions.length === 0 ? 0 : 60000,
+        delay,
       });
     }
   }
@@ -340,6 +352,7 @@ function gameLoop() {
   if (gameState.state === "GAME") {
     updateCreature();
     playRadarSound();
+    checkForCreatureEjected();
   }
 
   drawContainers();
@@ -401,7 +414,9 @@ document.onkeydown = function (e) {
       ejectedCargos.splice(ejectedCargos.length - 1, 0, "and");
     }
 
-    if (ejectedCargos.length > 0) {
+    if (ejectedCargos.length === 1) {
+      addTextAction(...ejectedCargos, "wasEjectedSingular");
+    } else if (ejectedCargos.length > 0) {
       addTextAction(...ejectedCargos, "wasEjected");
     }
 
@@ -415,7 +430,10 @@ document.onkeydown = function (e) {
       heavilyDamagedCargos.splice(heavilyDamagedCargos.length - 1, 0, "and");
     }
 
-    if (heavilyDamagedCargos.length > 0) {
+    if (heavilyDamagedCargos.length === 1) {
+      addTextAction(...heavilyDamagedCargos, "wasHeavilyDamagedSingular");
+    }
+    if (heavilyDamagedCargos.length > 1) {
       addTextAction(...heavilyDamagedCargos, "wasHeavilyDamaged");
     }
 
@@ -442,6 +460,7 @@ document.onkeydown = function (e) {
   }
   if (e.code === "Escape") {
     gameState.state = "MENU";
+    audioVoice.pause();
     gameMenu.setAttribute("style", "");
   }
   if (e.code === "Space") {
@@ -457,15 +476,7 @@ document.onkeydown = function (e) {
     }
 
     if (isEjectingKeyPressed && gameState.radarKey) {
-      const res = attemptToEject(gameState.radarKey);
-      // check if creature was ejected
-      const creatureCargoUnit = getCargoAtXY(
-        gameState.creature.x,
-        gameState.creature.y
-      );
-      if (creatureCargoUnit?.containerKey === gameState.radarKey) {
-        onGameEnd();
-      }
+      attemptToEject(gameState.radarKey);
     }
     keysVisual.textContent = gameState.radarKey;
   }
@@ -717,6 +728,7 @@ gameStartButton.onclick = () => {
 
 gameContinueButton.onclick = () => {
   gameState.state = "GAME";
+  audioVoice.play();
   gameMenu.setAttribute("style", "display: none");
 };
 
@@ -732,8 +744,7 @@ const onGameEnd = () => {
   gameState.state = "END";
   gameState.radarKey = "";
   gameState.queuedActions = [];
-  onkeydown = () => {};
-  onkeyup = () => {};
+  keysVisual.textContent = "";
   addTextAction(
     "missionSuccess",
     "AnomalyNotActive",

@@ -23,16 +23,18 @@ const fontGlowSelection = document.getElementById("font-glow");
 fontGlowSelection.addEventListener("change", function () {
     document.documentElement.style.setProperty("--font-glow", this.value);
 });
-const inGameTextToSpeech = document.getElementById("in-game-text-to-speech");
 // audio volume adjusters
 const ttsVolumeInput = document.getElementById("tts-volume-input");
+const ttsSpeedInput = document.getElementById("tts-speed-input");
 const gameVolumeInput = document.getElementById("game-volume-input");
 const musicVolumeInput = document.getElementById("music-volume-input");
 // audio elements on page
 const ttsForMenu = document.getElementById("voice");
 ttsForMenu.volume = 0.5;
+ttsForMenu.defaultPlaybackRate = 1;
 ttsForMenu.addEventListener("ended", () => {
     ttsPlayIcon.src = "./icon-play.png";
+    ttsPlaySpeedIcon.src = "./icon-play.png";
 });
 const soundEffectsForMenu = document.getElementById("beep");
 soundEffectsForMenu.volume = 0.5;
@@ -40,14 +42,20 @@ const musicForMenu = document.getElementById("music");
 musicForMenu.volume = 0.5;
 // test volume buttons
 const testSpeechVolumeButton = document.getElementById("test-audio-speech");
+const testSpeechSpeedButton = document.getElementById("test-audio-speech-speed");
 const testGameVolumeButton = document.getElementById("test-audio-game");
 const testMusicVolumeButton = document.getElementById("test-audio-music");
 // icons for playing test audio
 const ttsPlayIcon = document.querySelector("#test-audio-speech > img");
+const ttsPlaySpeedIcon = document.querySelector("#test-audio-speech-speed > img");
 const soundEffectsPlayIcon = document.querySelector("#test-audio-game > img");
 const musicPlayIcon = document.querySelector("#test-audio-music > img");
 // init
 initMenuAudio(ttsForMenu, testSpeechVolumeButton, ttsPlayIcon, ttsVolumeInput);
+initMenuAudio(ttsForMenu, testSpeechSpeedButton, ttsPlaySpeedIcon, ttsSpeedInput, (newVal) => {
+    ttsForMenu.playbackRate = Number(newVal);
+    ttsForMenu.defaultPlaybackRate = Number(newVal);
+});
 initMenuAudio(soundEffectsForMenu, testGameVolumeButton, soundEffectsPlayIcon, gameVolumeInput, (newVal) => {
     soundEffectsForMenu.setAttribute("data-volume-max", newVal);
     soundEffectsForMenu.volume = Number(newVal);

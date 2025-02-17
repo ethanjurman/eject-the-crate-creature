@@ -117,6 +117,13 @@ function getCargoAtXY(x, y) {
         containerKey,
     };
 }
+function checkForCreatureEjected() {
+    var _a;
+    const { x, y } = gameState.creature;
+    if ((_a = getCargoAtXY(x, y)) === null || _a === void 0 ? void 0 : _a.ejected) {
+        onGameEnd();
+    }
+}
 let frame = 0;
 const keysPressed = new Set();
 let gameState = {
@@ -176,6 +183,10 @@ function numberStrings(number) {
 function addTextAction(...texts) {
     return __awaiter(this, void 0, void 0, function* () {
         for (let index = 0; index < texts.length; index++) {
+            const delay = gameState.queuedActions.filter((action) => action.type === "TEXT")
+                .length === 0
+                ? 0
+                : 20000;
             const text = texts[index];
             if (typeof text === "object") {
                 text.group.forEach((item, itemIndex) => {
@@ -187,7 +198,7 @@ function addTextAction(...texts) {
                             id: Math.random(),
                             partOfPrevious: itemIndex !== 0,
                         },
-                        delay: 60000,
+                        delay,
                     });
                 });
             }
@@ -195,7 +206,7 @@ function addTextAction(...texts) {
                 addQueuedAction({
                     type: "TEXT",
                     data: { text: dialog[text], id: Math.random() },
-                    delay: gameState.queuedActions.length === 0 ? 0 : 60000,
+                    delay,
                 });
             }
         }
@@ -298,6 +309,7 @@ function gameLoop() {
     if (gameState.state === "GAME") {
         updateCreature();
         playRadarSound();
+        checkForCreatureEjected();
     }
     drawContainers();
     if (gameState.showCreatureAndDamage) {
@@ -344,7 +356,10 @@ document.onkeydown = function (e) {
         if (ejectedCargos.length > 1) {
             ejectedCargos.splice(ejectedCargos.length - 1, 0, "and");
         }
-        if (ejectedCargos.length > 0) {
+        if (ejectedCargos.length === 1) {
+            addTextAction(...ejectedCargos, "wasEjectedSingular");
+        }
+        else if (ejectedCargos.length > 0) {
             addTextAction(...ejectedCargos, "wasEjected");
         }
         const heavilyDamagedCargos = Object.entries(gameState.cargo)
@@ -353,7 +368,10 @@ document.onkeydown = function (e) {
         if (heavilyDamagedCargos.length > 1) {
             heavilyDamagedCargos.splice(heavilyDamagedCargos.length - 1, 0, "and");
         }
-        if (heavilyDamagedCargos.length > 0) {
+        if (heavilyDamagedCargos.length === 1) {
+            addTextAction(...heavilyDamagedCargos, "wasHeavilyDamagedSingular");
+        }
+        if (heavilyDamagedCargos.length > 1) {
             addTextAction(...heavilyDamagedCargos, "wasHeavilyDamaged");
         }
         Object.entries(gameState.cargo)
@@ -370,6 +388,7 @@ document.onkeydown = function (e) {
     }
     if (e.code === "Escape") {
         gameState.state = "MENU";
+        audioVoice.pause();
         gameMenu.setAttribute("style", "");
     }
     if (e.code === "Space") {
@@ -382,12 +401,7 @@ document.onkeydown = function (e) {
             gameState.radarKey = e.code;
         }
         if (isEjectingKeyPressed && gameState.radarKey) {
-            const res = attemptToEject(gameState.radarKey);
-            // check if creature was ejected
-            const creatureCargoUnit = getCargoAtXY(gameState.creature.x, gameState.creature.y);
-            if ((creatureCargoUnit === null || creatureCargoUnit === void 0 ? void 0 : creatureCargoUnit.containerKey) === gameState.radarKey) {
-                onGameEnd();
-            }
+            attemptToEject(gameState.radarKey);
         }
         keysVisual.textContent = gameState.radarKey;
     }
@@ -583,6 +597,7 @@ gameStartButton.onclick = () => {
 };
 gameContinueButton.onclick = () => {
     gameState.state = "GAME";
+    audioVoice.play();
     gameMenu.setAttribute("style", "display: none");
 };
 let lastFrameCount = 0;
@@ -596,8 +611,7 @@ const onGameEnd = () => {
     gameState.state = "END";
     gameState.radarKey = "";
     gameState.queuedActions = [];
-    onkeydown = () => { };
-    onkeyup = () => { };
+    keysVisual.textContent = "";
     addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: String(getScore()), group: numberStrings(getScore()) }, "credits", "thankYou", "fullReadout");
 };
 audioVoice.addEventListener("ended", () => {
