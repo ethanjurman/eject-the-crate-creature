@@ -14,14 +14,14 @@ function updateVisualizer() {
     const visHeight = volumeTarget * 360;
     // Update the inline styles:
     audioVis.style.height = `${visHeight}px`;
-    audioVis.style.background = "#2fff00"; // neon green when active
+    audioVis.style.background = "#9de64e"; // neon green when active
     // Set the animation so the bar “grows” from 0 to full height in sync with the beep
     audioVis.style.animation = `${effectiveDuration}s infinite beep`;
     // to catch if the audio was paused after this was triggered
     setTimeout(() => {
         if (audioPlayer.paused) {
             audioVis.style.animation = "none";
-            audioVis.style.background = "black";
+            audioVis.style.background = "#10121c";
         }
     }, 0);
 }
@@ -55,7 +55,7 @@ audioPlayer.addEventListener("ratechange", throttledUpdateVisualizer);
 audioPlayer.addEventListener("pause", () => {
     // Remove or pause the animation and revert the background to black
     audioVis.style.animation = "none";
-    audioVis.style.background = "black";
+    audioVis.style.background = "#10121c";
 });
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
@@ -411,9 +411,9 @@ document.onkeydown = function (e) {
     const isEjectingKeyPressedMenu = e.code.toLowerCase().includes("shift");
     // highlight menu key
     (_a = document
-        .getElementById(`key-${e.code}`)) === null || _a === void 0 ? void 0 : _a.setAttribute("style", "color: black; background: #2fff00;");
+        .getElementById(`key-${e.code}`)) === null || _a === void 0 ? void 0 : _a.setAttribute("style", "color: #10121c; background: #9de64e;");
     if (isEjectingKeyPressedMenu) {
-        Array.from(document.getElementsByClassName("key-Shift")).forEach((div) => div.setAttribute("style", "color: black; background: #2fff00;"));
+        Array.from(document.getElementsByClassName("key-Shift")).forEach((div) => div.setAttribute("style", "color: #10121c; background: #9de64e;"));
     }
     // game logic
     if (e.code === "Enter" && gameState.state === "READY") {
@@ -558,7 +558,7 @@ function drawCreature() {
     const y = PX_SIZE * gameState.creature.y;
     ctx.beginPath();
     ctx.arc(x, y, PX_SIZE / 12, 0, 2 * Math.PI);
-    ctx.fillStyle = "red";
+    ctx.fillStyle = "#ec273f";
     ctx.strokeStyle = "white";
     ctx.lineWidth = 5;
     ctx.fill();

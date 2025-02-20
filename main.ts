@@ -407,10 +407,11 @@ document.onkeydown = function (e) {
   // highlight menu key
   document
     .getElementById(`key-${e.code}`)
-    ?.setAttribute("style", "color: black; background: #2fff00;");
+    ?.setAttribute("style", "color: #10121c; background: #9de64e;");
+
   if (isEjectingKeyPressedMenu) {
     Array.from(document.getElementsByClassName("key-Shift")).forEach((div) =>
-      div.setAttribute("style", "color: black; background: #2fff00;")
+      div.setAttribute("style", "color: #10121c; background: #9de64e;")
     );
   }
 
@@ -584,7 +585,7 @@ function drawCreature() {
   const y = PX_SIZE * gameState.creature.y;
   ctx.beginPath();
   ctx.arc(x, y, PX_SIZE / 12, 0, 2 * Math.PI);
-  ctx.fillStyle = "red";
+  ctx.fillStyle = "#ec273f";
   ctx.strokeStyle = "white";
   ctx.lineWidth = 5;
   ctx.fill();

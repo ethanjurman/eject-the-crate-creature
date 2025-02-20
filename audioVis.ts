@@ -17,7 +17,7 @@ function updateVisualizer() {
 
   // Update the inline styles:
   audioVis.style.height = `${visHeight}px`;
-  audioVis.style.background = "#2fff00"; // neon green when active
+  audioVis.style.background = "#9de64e"; // neon green when active
   // Set the animation so the bar “grows” from 0 to full height in sync with the beep
   audioVis.style.animation = `${effectiveDuration}s infinite beep`;
 
@@ -25,7 +25,7 @@ function updateVisualizer() {
   setTimeout(() => {
     if (audioPlayer.paused) {
       audioVis.style.animation = "none";
-      audioVis.style.background = "black";
+      audioVis.style.background = "#10121c";
     }
   }, 0);
 }
@@ -64,5 +64,5 @@ audioPlayer.addEventListener("ratechange", throttledUpdateVisualizer);
 audioPlayer.addEventListener("pause", () => {
   // Remove or pause the animation and revert the background to black
   audioVis.style.animation = "none";
-  audioVis.style.background = "black";
+  audioVis.style.background = "#10121c";
 });
