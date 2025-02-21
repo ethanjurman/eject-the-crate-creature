@@ -58,7 +58,7 @@ fetch("./audio/dialog.txt").then(async (res) => {
     .split("\n")
     .map((line) => line.split("|"))
     .reduce<Record<string, string>>((acc, linePair) => {
-      acc[linePair[0]] = linePair[1];
+      acc[linePair[0]] = linePair[1]?.trim();
       // fetch(`./audio/en/${linePair[0]}.wav`);
       return acc;
     }, {});
@@ -271,6 +271,7 @@ const executeAction = (action: Action) => {
       ) as HTMLDivElement;
       const newLine = document.createElement("p");
       newLine.setAttribute("data-crawl-text", action.data.text);
+      console.log(action.data.text);
       readLineDiv.innerText = action.data.text;
       linesContainer.prepend(newLine);
       linesContainer.scrollTo(0, 0);
@@ -324,10 +325,10 @@ const executeAction = (action: Action) => {
       },
     ][runDir]();
 
-    const onCargoWithHeavyDamge =
+    const onCargoWithHeavyDamage =
       (getCargoAtXY(creatureInfo.x, creatureInfo.y)?.damage || 0) >=
       HEAVY_DAMAGE;
-    if (action.data.count < 5 || onCargoWithHeavyDamge) {
+    if (action.data.count < 5 || onCargoWithHeavyDamage) {
       setTimeout(() => {
         const id = Math.random();
         const newCount = action.data.count + 1;
@@ -373,14 +374,27 @@ function attemptToEject(code: string) {
 
   // check for ejection
   if (gameState.cargo[code]?.ejected) {
-    addTextAction(code, "ejectingFailedAlreadyEjected");
+    addTextAction(
+      {
+        text: `${dialog["containmentUnit"]} ${dialog[code]}}`,
+        group: ["containmentUnit", code],
+      },
+      "ejectingFailedAlreadyEjected"
+    );
     return { result: false, reason: "ejected" };
   }
   gameState.cargo[code] = {
     ...gameState.cargo[code],
     ejected: true,
   };
-  addTextAction(code, "isEjected", "AnomalyStillActive");
+  addTextAction(
+    {
+      text: `${dialog["containmentUnit"]} ${dialog[code]}}`,
+      group: ["containmentUnit", code],
+    },
+    "isEjected",
+    "AnomalyStillActive"
+  );
   return { result: true };
 }
 
@@ -466,9 +480,23 @@ document.onkeydown = function (e) {
     }
 
     if (ejectedCargos.length === 1) {
-      addTextAction(...ejectedCargos, "wasEjectedSingular");
+      addTextAction(
+        {
+          text: `${dialog["containmentUnit"]} ${dialog[ejectedCargos[0]]}`,
+          group: ["containmentUnit", ejectedCargos[0]],
+        },
+        "wasEjectedSingular"
+      );
     } else if (ejectedCargos.length > 0) {
-      addTextAction(...ejectedCargos, "wasEjected");
+      addTextAction(
+        {
+          text: `${dialog["containmentUnit"]} ${ejectedCargos
+            .map((k) => dialog[k])
+            .join(", ")}`,
+          group: ["containmentUnit", ...ejectedCargos.map((k) => dialog[k])],
+        },
+        "wasEjected"
+      );
     }
 
     const heavilyDamagedCargos = Object.entries(gameState.cargo)
@@ -482,10 +510,29 @@ document.onkeydown = function (e) {
     }
 
     if (heavilyDamagedCargos.length === 1) {
-      addTextAction(...heavilyDamagedCargos, "wasHeavilyDamagedSingular");
+      addTextAction(
+        {
+          text: `${dialog["containmentUnit"]} ${
+            dialog[heavilyDamagedCargos[0]]
+          }`,
+          group: ["containmentUnit", heavilyDamagedCargos[0]],
+        },
+        "wasHeavilyDamagedSingular"
+      );
     }
     if (heavilyDamagedCargos.length > 1) {
-      addTextAction(...heavilyDamagedCargos, "wasHeavilyDamaged");
+      addTextAction(
+        {
+          text: `${dialog["containmentUnit"]} ${heavilyDamagedCargos
+            .map((k) => dialog[k])
+            .join(", ")}`,
+          group: [
+            "containmentUnit",
+            ...heavilyDamagedCargos.map((k) => dialog[k]),
+          ],
+        },
+        "wasHeavilyDamaged"
+      );
     }
 
     Object.entries(gameState.cargo)
@@ -497,14 +544,42 @@ document.onkeydown = function (e) {
             10 >
             0
       )
-      .forEach(([cargoKey, cargo]) => {
+      .reduce<string[][]>((acc, [cargoKey, cargo]) => {
         const damageCost =
           Math.floor(((cargo.damage / HEAVY_DAMAGE) * (MAX_SCORE / 36)) / 10) *
           10;
+        if (acc[damageCost]) {
+          acc[damageCost] = [...acc[damageCost], cargoKey];
+        } else {
+          acc[damageCost] = [cargoKey];
+        }
+        return acc;
+      }, [])
+      .forEach((keys, damage) => {
+        if (keys.length > 1) {
+          keys.splice(keys.length - 1, 0, "and");
+          addTextAction(
+            {
+              text: `${dialog["containmentUnit"]} ${keys
+                .map((k) => dialog[k])
+                .join(", ")}`,
+              group: ["containmentUnit", ...numberStrings(damage)],
+            },
+            "wereDamaged",
+            { text: String(damage), group: numberStrings(damage) },
+            "credits",
+            "forEach"
+          );
+        }
         addTextAction(
-          cargoKey,
+          {
+            text: `${dialog["containmentUnit"]} ${keys
+              .map((k) => dialog[k])
+              .join(", ")}`,
+            group: ["containmentUnit", ...numberStrings(damage)],
+          },
           "wasDamaged",
-          { text: String(damageCost), group: numberStrings(damageCost) },
+          { text: String(damage), group: numberStrings(damage) },
           "credits"
         );
       });

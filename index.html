@@ -147,10 +147,13 @@
         display: flex;
         flex-direction: column-reverse;
       }
-      #lines > div:first-child:before {
+      #lines > p:first-child:before {
         content: "> ";
         min-width: 2em;
         animation: 1s infinite blinking;
+      }
+      #lines > p {
+        margin-bottom: 0px;
       }
       #score {
         margin: auto;
@@ -201,6 +204,8 @@
       #read-line {
         color: #10121c;
         text-shadow: none;
+        max-height: 1em;
+        overflow: hidden;
       }
     </style>
     <script>

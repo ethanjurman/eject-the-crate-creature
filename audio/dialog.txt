@@ -28,42 +28,45 @@ wasEjected|WERE EJECTED AND YOU WERE FINED FOR 270 CREDITS EACH
 wasHeavilyDamagedSingular|WAS HEAVILY DAMAGED AND FINED FOR 270 CREDITS
 wasHeavilyDamaged|WERE HEAVILY DAMAGED AND YOU WERE FINED FOR 270 CREDITS EACH
 wasDamaged|WAS DAMAGED AND YOU WERE FINED FOR
-Digit1|Containment Unit 1
-Digit2|Containment Unit 2
-Digit3|Containment Unit 3
-Digit4|Containment Unit 4
-Digit5|Containment Unit 5
-Digit6|Containment Unit 6
-Digit7|Containment Unit 7
-Digit8|Containment Unit 8
-Digit9|Containment Unit 9
-KeyQ|Containment Unit Q
-KeyW|Containment Unit W
-KeyE|Containment Unit E
-KeyR|Containment Unit R
-KeyT|Containment Unit T
-KeyY|Containment Unit Y
-KeyU|Containment Unit U
-KeyI|Containment Unit I
-KeyO|Containment Unit O
-KeyA|Containment Unit A
-KeyS|Containment Unit S
-KeyD|Containment Unit D
-KeyF|Containment Unit F
-KeyG|Containment Unit G
-KeyH|Containment Unit H
-KeyJ|Containment Unit J
-KeyK|Containment Unit K
-KeyL|Containment Unit L
-KeyZ|Containment Unit Z
-KeyX|Containment Unit X
-KeyC|Containment Unit C
-KeyV|Containment Unit V
-KeyB|Containment Unit B
-KeyN|Containment Unit N
-KeyM|Containment Unit M
-Comma|Containment Unit Comma
-Period|Containment Unit Period
+wereDamaged|WERE DAMAGED AND YOU WERE FINED
+forEach|FOR EACH
+containmentUnit|Containment Unit
+Digit1|1
+Digit2|2
+Digit3|3
+Digit4|4
+Digit5|5
+Digit6|6
+Digit7|7
+Digit8|8
+Digit9|9
+KeyQ|Q
+KeyW|W
+KeyE|E
+KeyR|R
+KeyT|T
+KeyY|Y
+KeyU|U
+KeyI|I
+KeyO|O
+KeyA|A
+KeyS|S
+KeyD|D
+KeyF|F
+KeyG|G
+KeyH|H
+KeyJ|J
+KeyK|K
+KeyL|L
+KeyZ|Z
+KeyX|X
+KeyC|C
+KeyV|V
+KeyB|B
+KeyN|N
+KeyM|M
+Comma|Comma
+Period|Period
 1|ONE
 2|TWO
 3|THREE
