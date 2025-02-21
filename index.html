@@ -231,7 +231,7 @@
 
     <!-- menu -->
     <div id="menu" class="centered-div" aria-label="menu">
-      <div>EJECT THE CRATE CREATURE</div>
+      <div style="font-size: 2em">EJECT THE CRATE CREATURE</div>
       <div><i>a game by Ethan Jurman</i></div>
       <br />
       <div class="menu-frame">
@@ -259,6 +259,16 @@
           <div class="menu-line">
             Opening Narration:
             <select id="opening-select" name="opening-select">
+              <option value="ON" selected>ON</option>
+              <option value="OFF">OFF</option>
+            </select>
+          </div>
+          <div class="menu-line">
+            <label style="text-align: left"
+              >Text to Speech <br />
+              <i>(turn this off if you have a screen reader)</i></label
+            >
+            <select id="tts-toggle" name="tts-toggle">
               <option value="ON" selected>ON</option>
               <option value="OFF">OFF</option>
             </select>
@@ -401,10 +411,19 @@
           <div id="readout-tiny-cargo"></div>
         </div>
       </div>
-      <div>
-        <button id="game-start">start</button>
-        <button style="display: none" id="game-continue">continue</button>
-        <button id="reset">reset</button>
+      <div
+        style="
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          height: 3em;
+        "
+      >
+        <button id="game-start">PRESS ENTER TO START</button>
+        <button style="display: none" id="game-continue">
+          PRESS ENTER TO CONTINUE
+        </button>
+        <button id="reset">PRESS BACKSPACE TO RESTART</button>
       </div>
     </div>
   </body>

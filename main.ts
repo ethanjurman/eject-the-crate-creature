@@ -159,7 +159,7 @@ let frame = 0;
 const keysPressed = new Set<string>();
 
 let gameState: GameState = {
-  state: "MENU",
+  state: "MENU_START",
   creature: {
     x: Math.floor(Math.random() * (W - 1)) + 0.5,
     y: Math.floor(Math.random() * (H - 1)) + 0.5,
@@ -278,11 +278,25 @@ const executeAction = (action: Action) => {
     const dialogEntry = Object.entries(dialog).find(([key, value]) => {
       return value === action.data.text || key === action.data.readoutKey;
     });
-    if (dialogEntry?.[0]) {
+    if (dialogEntry?.[0] && !action.data.skipSpeaking) {
       audioVoice.src = `./audio/en/${dialogEntry[0]}.wav`;
       audioVoice.load();
       audioVoice.currentTime = 0;
-      audioVoice.play();
+      audioVoice.play().then(() => {
+        // if part of previous was set, either false or true, then it's
+        // part of a string (even if it's just the begging)
+        // shorten it, as these tend to be longer
+        if (
+          action.data.partOfPrevious === false ||
+          action.data.partOfPrevious === true
+        ) {
+          const newDuration =
+            ((audioVoice.duration - 0.3) / audioVoice.playbackRate) * 1000;
+          setTimeout(() => {
+            advanceQueuedAction();
+          }, newDuration);
+        }
+      });
     }
   }
   if (action.type === "CREATURE_RUN") {
@@ -317,9 +331,9 @@ const executeAction = (action: Action) => {
       setTimeout(() => {
         const id = Math.random();
         const newCount = action.data.count + 1;
-        addQueuedAction({
+        addUnqueuedAction({
           type: "CREATURE_RUN",
-          delay: 1000,
+          delay: 1000 * action.data.count,
           data: {
             count: newCount,
             id,
@@ -348,6 +362,16 @@ const executeAction = (action: Action) => {
 };
 
 function attemptToEject(code: string) {
+  // clear out existing text
+  gameState.queuedActions.forEach((action, index) => {
+    action.delay = -1;
+    if (action.type === "TEXT") {
+      action.data.skipSpeaking = true;
+    }
+  });
+  advanceQueuedAction();
+
+  // check for ejection
   if (gameState.cargo[code]?.ejected) {
     addTextAction(code, "ejectingFailedAlreadyEjected");
     return { result: false, reason: "ejected" };
@@ -420,6 +444,18 @@ document.onkeydown = function (e) {
     gameState.state = "GAME";
     addTextAction("missionBegin");
   }
+  if (e.code === "Enter" && gameState.state === "MENU_START") {
+    startGame();
+  }
+  if (e.code === "Enter" && gameState.state === "MENU") {
+    continueGame();
+  }
+  if (
+    e.code === "Backspace" &&
+    (gameState.state === "MENU" || gameState.state === "MENU_START")
+  ) {
+    window.location.reload();
+  }
   if (e.code === "Enter" && gameState.state === "END") {
     gameState.showCreatureAndDamage = true;
     const ejectedCargos = Object.entries(gameState.cargo)
@@ -455,7 +491,7 @@ document.onkeydown = function (e) {
     Object.entries(gameState.cargo)
       .filter(
         ([__cargoKey, cargo]) =>
-          cargo.damage <= HEAVY_DAMAGE &&
+          cargo.damage < HEAVY_DAMAGE &&
           !cargo.ejected &&
           Math.floor(((cargo.damage / HEAVY_DAMAGE) * (MAX_SCORE / 36)) / 10) *
             10 >
@@ -696,7 +732,7 @@ function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   frame += 1;
 
-  if (gameState.state !== "MENU") {
+  if (gameState.state !== "MENU" && gameState.state !== "MENU_START") {
     gameLoop();
   }
 
@@ -705,7 +741,7 @@ function animate() {
 }
 animate();
 
-gameStartButton.onclick = () => {
+function startGame() {
   gameState.state = "OPENING";
   gameMenu.setAttribute("style", "display: none");
   gameStartButton.setAttribute("style", "display: none");
@@ -738,12 +774,20 @@ gameStartButton.onclick = () => {
     delay: 100,
     data: { state: "READY", id: Math.random() },
   });
+}
+
+gameStartButton.onclick = () => {
+  startGame();
 };
 
-gameContinueButton.onclick = () => {
+function continueGame() {
   gameState.state = "GAME";
   audioVoice.play();
   gameMenu.setAttribute("style", "display: none");
+}
+
+gameContinueButton.onclick = () => {
+  continueGame();
 };
 
 gameResetButton.onclick = () => {

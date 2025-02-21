@@ -39,8 +39,24 @@ const openingNarrationSelection = document.getElementById("opening-select");
 openingNarrationSelection.addEventListener("change", function () {
     localStorage.setItem("opening", this.value);
 });
+const ttsSelection = document.getElementById("tts-toggle");
+ttsSelection.addEventListener("change", function () {
+    const volInput = document.getElementById("tts-volume-input");
+    const newValue = this.value === "ON" ? "0.5" : "0";
+    volInput.value = newValue;
+    localStorage.setItem("ttsVolume", newValue);
+    ttsForMenu.volume = Number(newValue);
+});
 // audio volume adjusters
 const ttsVolumeInput = document.getElementById("tts-volume-input");
+ttsVolumeInput.addEventListener("input", function () {
+    if (this.value !== "0") {
+        ttsSelection.value = "ON";
+    }
+    if (this.value === "0") {
+        ttsSelection.value = "OFF";
+    }
+});
 const ttsSpeedInput = document.getElementById("tts-speed-input");
 const gameVolumeInput = document.getElementById("game-volume-input");
 const musicVolumeInput = document.getElementById("music-volume-input");
@@ -73,13 +89,13 @@ fontGlowSelection.value = saved.glow || "4px";
 document.documentElement.style.setProperty("--font-glow", fontGlowSelection.value);
 openingNarrationSelection.value = saved.opening || "ON";
 ttsVolumeInput.value = saved.ttsVolume || "0.5";
+ttsSelection.value = Number(ttsVolumeInput.value) > 0 ? "ON" : "OFF";
 ttsForMenu.volume = Number(ttsVolumeInput.value);
 ttsSpeedInput.value = saved.ttsSpeed || "1";
 ttsForMenu.playbackRate = Number(ttsSpeedInput.value);
 ttsForMenu.defaultPlaybackRate = Number(ttsSpeedInput.value);
 gameVolumeInput.value = saved.seVolume || "0.5";
 soundEffectsForMenu.setAttribute("data-volume-max", gameVolumeInput.value);
-console.log(gameVolumeInput.value, soundEffectsForMenu.volume);
 musicVolumeInput.value = saved.musicVolume || "0.5";
 musicForMenu.volume = Number(musicVolumeInput.value);
 // init

@@ -199,7 +199,7 @@ function checkForCreatureEjected() {
 let frame = 0;
 const keysPressed = new Set();
 let gameState = {
-    state: "MENU",
+    state: "MENU_START",
     creature: {
         x: Math.floor(Math.random() * (W - 1)) + 0.5,
         y: Math.floor(Math.random() * (H - 1)) + 0.5,
@@ -305,11 +305,22 @@ const executeAction = (action) => {
         const dialogEntry = Object.entries(dialog).find(([key, value]) => {
             return value === action.data.text || key === action.data.readoutKey;
         });
-        if (dialogEntry === null || dialogEntry === void 0 ? void 0 : dialogEntry[0]) {
+        if ((dialogEntry === null || dialogEntry === void 0 ? void 0 : dialogEntry[0]) && !action.data.skipSpeaking) {
             audioVoice.src = `./audio/en/${dialogEntry[0]}.wav`;
             audioVoice.load();
             audioVoice.currentTime = 0;
-            audioVoice.play();
+            audioVoice.play().then(() => {
+                // if part of previous was set, either false or true, then it's
+                // part of a string (even if it's just the begging)
+                // shorten it, as these tend to be longer
+                if (action.data.partOfPrevious === false ||
+                    action.data.partOfPrevious === true) {
+                    const newDuration = ((audioVoice.duration - 0.3) / audioVoice.playbackRate) * 1000;
+                    setTimeout(() => {
+                        advanceQueuedAction();
+                    }, newDuration);
+                }
+            });
         }
     }
     if (action.type === "CREATURE_RUN") {
@@ -340,9 +351,9 @@ const executeAction = (action) => {
             setTimeout(() => {
                 const id = Math.random();
                 const newCount = action.data.count + 1;
-                addQueuedAction({
+                addUnqueuedAction({
                     type: "CREATURE_RUN",
-                    delay: 1000,
+                    delay: 1000 * action.data.count,
                     data: {
                         count: newCount,
                         id,
@@ -367,6 +378,15 @@ const executeAction = (action) => {
 };
 function attemptToEject(code) {
     var _a;
+    // clear out existing text
+    gameState.queuedActions.forEach((action, index) => {
+        action.delay = -1;
+        if (action.type === "TEXT") {
+            action.data.skipSpeaking = true;
+        }
+    });
+    advanceQueuedAction();
+    // check for ejection
     if ((_a = gameState.cargo[code]) === null || _a === void 0 ? void 0 : _a.ejected) {
         addTextAction(code, "ejectingFailedAlreadyEjected");
         return { result: false, reason: "ejected" };
@@ -420,6 +440,16 @@ document.onkeydown = function (e) {
         gameState.state = "GAME";
         addTextAction("missionBegin");
     }
+    if (e.code === "Enter" && gameState.state === "MENU_START") {
+        startGame();
+    }
+    if (e.code === "Enter" && gameState.state === "MENU") {
+        continueGame();
+    }
+    if (e.code === "Backspace" &&
+        (gameState.state === "MENU" || gameState.state === "MENU_START")) {
+        window.location.reload();
+    }
     if (e.code === "Enter" && gameState.state === "END") {
         gameState.showCreatureAndDamage = true;
         const ejectedCargos = Object.entries(gameState.cargo)
@@ -447,7 +477,7 @@ document.onkeydown = function (e) {
             addTextAction(...heavilyDamagedCargos, "wasHeavilyDamaged");
         }
         Object.entries(gameState.cargo)
-            .filter(([__cargoKey, cargo]) => cargo.damage <= HEAVY_DAMAGE &&
+            .filter(([__cargoKey, cargo]) => cargo.damage < HEAVY_DAMAGE &&
             !cargo.ejected &&
             Math.floor(((cargo.damage / HEAVY_DAMAGE) * (MAX_SCORE / 36)) / 10) *
                 10 >
@@ -648,14 +678,14 @@ function animate() {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame += 1;
-    if (gameState.state !== "MENU") {
+    if (gameState.state !== "MENU" && gameState.state !== "MENU_START") {
         gameLoop();
     }
     // last call
     requestAnimationFrame(animate);
 }
 animate();
-gameStartButton.onclick = () => {
+function startGame() {
     gameState.state = "OPENING";
     gameMenu.setAttribute("style", "display: none");
     gameStartButton.setAttribute("style", "display: none");
@@ -674,11 +704,17 @@ gameStartButton.onclick = () => {
         delay: 100,
         data: { state: "READY", id: Math.random() },
     });
+}
+gameStartButton.onclick = () => {
+    startGame();
 };
-gameContinueButton.onclick = () => {
+function continueGame() {
     gameState.state = "GAME";
     audioVoice.play();
     gameMenu.setAttribute("style", "display: none");
+}
+gameContinueButton.onclick = () => {
+    continueGame();
 };
 gameResetButton.onclick = () => {
     window.location.reload();
@@ -741,8 +777,24 @@ const openingNarrationSelection = document.getElementById("opening-select");
 openingNarrationSelection.addEventListener("change", function () {
     localStorage.setItem("opening", this.value);
 });
+const ttsSelection = document.getElementById("tts-toggle");
+ttsSelection.addEventListener("change", function () {
+    const volInput = document.getElementById("tts-volume-input");
+    const newValue = this.value === "ON" ? "0.5" : "0";
+    volInput.value = newValue;
+    localStorage.setItem("ttsVolume", newValue);
+    ttsForMenu.volume = Number(newValue);
+});
 // audio volume adjusters
 const ttsVolumeInput = document.getElementById("tts-volume-input");
+ttsVolumeInput.addEventListener("input", function () {
+    if (this.value !== "0") {
+        ttsSelection.value = "ON";
+    }
+    if (this.value === "0") {
+        ttsSelection.value = "OFF";
+    }
+});
 const ttsSpeedInput = document.getElementById("tts-speed-input");
 const gameVolumeInput = document.getElementById("game-volume-input");
 const musicVolumeInput = document.getElementById("music-volume-input");
@@ -775,13 +827,13 @@ fontGlowSelection.value = saved.glow || "4px";
 document.documentElement.style.setProperty("--font-glow", fontGlowSelection.value);
 openingNarrationSelection.value = saved.opening || "ON";
 ttsVolumeInput.value = saved.ttsVolume || "0.5";
+ttsSelection.value = Number(ttsVolumeInput.value) > 0 ? "ON" : "OFF";
 ttsForMenu.volume = Number(ttsVolumeInput.value);
 ttsSpeedInput.value = saved.ttsSpeed || "1";
 ttsForMenu.playbackRate = Number(ttsSpeedInput.value);
 ttsForMenu.defaultPlaybackRate = Number(ttsSpeedInput.value);
 gameVolumeInput.value = saved.seVolume || "0.5";
 soundEffectsForMenu.setAttribute("data-volume-max", gameVolumeInput.value);
-console.log(gameVolumeInput.value, soundEffectsForMenu.volume);
 musicVolumeInput.value = saved.musicVolume || "0.5";
 musicForMenu.volume = Number(musicVolumeInput.value);
 // init

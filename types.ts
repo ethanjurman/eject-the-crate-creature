@@ -6,10 +6,12 @@ export type TextAction = {
     readoutKey?: string; // fallback for text
     id: number;
     partOfPrevious?: boolean;
+    skipSpeaking?: boolean;
   };
 };
 
 export type GameStates =
+  | "MENU_START"
   | "MENU"
   | "OPENING"
   | "READY"
