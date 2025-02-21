@@ -101,7 +101,7 @@
         border: 4px solid #9de64e;
         border-radius: 8px;
         display: inline-block;
-        min-width: 710px;
+        min-width: 766px;
         max-height: calc(100% - 100px);
         overflow: auto;
       }
@@ -227,18 +227,21 @@
         id="canvas"
       ></canvas>
     </div>
-    <div id="keys"></div>
+    <p id="keys"></p>
 
     <!-- menu -->
     <div id="menu" class="centered-div" aria-label="menu">
-      <div style="font-size: 2em">EJECT THE CRATE CREATURE</div>
-      <div><i>a game by Ethan Jurman</i></div>
+      <div
+        style="font-size: 2em"
+        data-crawl-text="EJECT THE CRATE CREATURE"
+      ></div>
+      <div><i data-crawl-text="a game by Ethan Jurman"></i></div>
       <br />
       <div class="menu-frame">
         <div>
-          <div>SETTINGS:</div>
+          <div data-crawl-text="SETTINGS:"></div>
           <div class="menu-line">
-            Font:
+            <label data-crawl-text="Font:"></label>
             <select id="font-selection" name="fonts">
               <option value="monospace" selected>Monospace</option>
               <option value="Atkinson-Hyperlegible Next">
@@ -250,31 +253,35 @@
             </select>
           </div>
           <div class="menu-line">
-            Font glow:
+            <label data-crawl-text="Font glow:"></label>
             <select id="font-glow" name="font glow">
               <option value="4px" selected>ON</option>
               <option value="0px">OFF</option>
             </select>
           </div>
           <div class="menu-line">
-            Opening Narration:
+            <label data-crawl-text="Opening Narration:"></label>
             <select id="opening-select" name="opening-select">
               <option value="ON" selected>ON</option>
               <option value="OFF">OFF</option>
             </select>
           </div>
           <div class="menu-line">
-            <label style="text-align: left"
-              >Text to Speech <br />
-              <i>(turn this off if you have a screen reader)</i></label
-            >
+            <label
+              style="text-align: left"
+              data-crawl-text="In Game Text to Speech:"
+              ><br />
+              <i
+                data-crawl-text="(turn this off if you have a screen reader)"
+              ></i
+            ></label>
             <select id="tts-toggle" name="tts-toggle">
               <option value="ON" selected>ON</option>
               <option value="OFF">OFF</option>
             </select>
           </div>
           <div class="menu-line">
-            Text to Speech Volume:
+            <label data-crawl-text="Text to Speech Volume:"></label>
             <div>
               <input
                 type="range"
@@ -290,7 +297,7 @@
             </div>
           </div>
           <div class="menu-line">
-            Text & Speech Speed:
+            <label data-crawl-text="Text & Speech Speed:"></label>
             <div>
               <input
                 type="range"
@@ -310,7 +317,7 @@
             </div>
           </div>
           <div class="menu-line">
-            Sound Effects Volume:
+            <label data-crawl-text="Sound Effects Volume:"></label>
             <div>
               <input
                 type="range"
@@ -326,7 +333,7 @@
             </div>
           </div>
           <div class="menu-line">
-            Music Volume:
+            <label data-crawl-text="Music Volume:"></label>
             <div>
               <input
                 type="range"
@@ -344,23 +351,14 @@
           </div>
         </div>
         <div>
-          <div>HOW TO PLAY:</div>
-          <p>
-            A creature is roaming the spacecraft. Use the keys on your keyboard
-            to activate it's radar, pinpoint the creatures location (the radar
-            will increase both volume and frequency if you are using a radar
-            close to the creature), and then eject it (by pushing both the key
-            associated with the containment unit, and shift). The longer the
-            creature is out causing damage, the more the corporation will fine
-            you, and the less profit you'll make! So hurry up and stop that
-            creature!
-          </p>
-          <p>
-            Below is a tiny cargo model, and you can test that your keyboard is
-            working and matches the expected result. As well, push the SHIFT
-            keys to ensure that ejecting is possible.
-          </p>
-          <p>Push SPACE to advance text to speech audio</p>
+          <div data-crawl-text="HOW TO PLAY:"></div>
+          <p
+            data-crawl-text="A creature is roaming the spacecraft. Use the keys on your keyboard to activate it's radar, pinpoint the creatures location (the radar will increase both volume and frequency if you are using a radar close to the creature), and then eject it (by pushing both the key associated with the containment unit, and shift). The longer the creature is out causing damage, the more the corporation will fine you, and the less profit you'll make! So hurry up and stop that creature!"
+          ></p>
+          <p
+            data-crawl-text="Below is a tiny cargo model, and you can test that your keyboard is working and matches the expected result. As well, push the SHIFT keys to ensure that ejecting is possible."
+          ></p>
+          <p data-crawl-text="Push SPACE to advance text to speech audio"></p>
           <div
             role="application"
             aria-label="below is a 4 by 9 grid showing each key on a keyboard, lit up when that key is held down"
@@ -419,11 +417,16 @@
           height: 3em;
         "
       >
-        <button id="game-start">PRESS ENTER TO START</button>
-        <button style="display: none" id="game-continue">
-          PRESS ENTER TO CONTINUE
-        </button>
-        <button id="reset">PRESS BACKSPACE TO RESTART</button>
+        <button id="game-start" data-crawl-text="PRESS ENTER TO START"></button>
+        <button
+          style="display: none"
+          id="game-continue"
+          data-crawl-text="PRESS ENTER TO CONTINUE"
+        ></button>
+        <button
+          id="reset"
+          data-crawl-text="PRESS BACKSPACE TO RESTART"
+        ></button>
       </div>
     </div>
   </body>

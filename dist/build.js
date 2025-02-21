@@ -296,8 +296,8 @@ const executeAction = (action) => {
         const linesContainer = document.getElementById("lines");
         if (!action.data.partOfPrevious) {
             const readLineDiv = document.getElementById("read-line");
-            const newLine = document.createElement("div");
-            newLine.innerText = action.data.text;
+            const newLine = document.createElement("p");
+            newLine.setAttribute("data-crawl-text", action.data.text);
             readLineDiv.innerText = action.data.text;
             linesContainer.prepend(newLine);
             linesContainer.scrollTo(0, 0);
@@ -504,13 +504,17 @@ document.onkeydown = function (e) {
             const containerXY = getXYForContainerKey(gameState.radarKey);
             if (gameState.radarKey && containerXY) {
                 const { x, y } = containerXY;
-                keysVisual.textContent = `${gameState.radarKey} container unit at ${x}-${y} location`;
+                const textToUse = `${gameState.radarKey} container unit at ${x}-${y} location`;
+                if (keysVisual.getAttribute("aria-label") !== textToUse) {
+                    keysVisual.textContent = "";
+                    keysVisual.removeAttribute("aria-label");
+                    keysVisual.setAttribute("data-crawl-text", textToUse);
+                }
             }
         }
         if (isEjectingKeyPressed && gameState.radarKey) {
             attemptToEject(gameState.radarKey);
         }
-        // keysVisual.textContent = gameState.radarKey;
     }
 };
 document.onkeyup = function (e) {
@@ -532,7 +536,12 @@ document.onkeyup = function (e) {
         // new radar key, read it out
         if (containerXY) {
             const { x, y } = containerXY;
-            keysVisual.textContent = `${gameState.radarKey} container unit at ${x}-${y} location`;
+            const textToUse = `${gameState.radarKey} container unit at ${x}-${y} location`;
+            if (keysVisual.getAttribute("aria-label") !== textToUse) {
+                keysVisual.textContent = "";
+                keysVisual.removeAttribute("aria-label");
+                keysVisual.setAttribute("data-crawl-text", textToUse);
+            }
         }
         if (!gameState.radarKey) {
             keysVisual.textContent = ``;
@@ -736,6 +745,31 @@ const onGameEnd = () => {
 audioVoice.addEventListener("ended", () => {
     advanceQueuedAction();
 });
+setInterval(() => {
+    const elements = document.querySelectorAll("[data-crawl-text]");
+    if (elements.length === 0) {
+        return;
+    }
+    elements.forEach((element) => {
+        const crawlText = element.getAttribute("data-crawl-text") || "";
+        if (!element.getAttribute("aria-label")) {
+            element.setAttribute("aria-label", crawlText);
+        }
+        if (crawlText.length === 0) {
+            element.removeAttribute("data-crawl-text");
+            return;
+        }
+        if (element.tagName === "P") {
+            const word = crawlText.split(" ")[0];
+            element.textContent = element.textContent + word + " ";
+            element.setAttribute("data-crawl-text", crawlText.slice(word.length + 1));
+        }
+        else {
+            element.textContent = element.textContent + crawlText[0];
+            element.setAttribute("data-crawl-text", crawlText.slice(1));
+        }
+    });
+}, 50);
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const saved = {
