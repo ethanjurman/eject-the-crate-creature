@@ -906,7 +906,7 @@ const ttsPlaySpeedIcon = document.querySelector("#test-audio-speech-speed > img"
 const soundEffectsPlayIcon = document.querySelector("#test-audio-game > img");
 const musicPlayIcon = document.querySelector("#test-audio-music > img");
 // setValues based on localStorage
-fontSelection.value = saved.font || "monospace";
+fontSelection.value = saved.font || "'Silkscreen'";
 document.documentElement.style.setProperty("--dynamic-font", fontSelection.value);
 fontGlowSelection.value = saved.glow || "4px";
 document.documentElement.style.setProperty("--font-glow", fontGlowSelection.value);

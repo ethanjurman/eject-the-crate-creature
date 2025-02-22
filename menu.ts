@@ -136,7 +136,7 @@ const musicPlayIcon = document.querySelector(
 ) as HTMLImageElement;
 
 // setValues based on localStorage
-fontSelection.value = saved.font || "monospace";
+fontSelection.value = saved.font || "'Silkscreen'";
 document.documentElement.style.setProperty(
   "--dynamic-font",
   fontSelection.value
