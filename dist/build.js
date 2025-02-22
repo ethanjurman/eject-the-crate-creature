@@ -271,7 +271,7 @@ function addTextAction(...texts) {
                             id: Math.random(),
                             partOfPrevious: itemIndex !== 0,
                         },
-                        delay,
+                        delay: delay === 0 && itemIndex === 0 ? 0 : 20000,
                     });
                 });
             }
@@ -299,7 +299,6 @@ const executeAction = (action) => {
             const readLineDiv = document.getElementById("read-line");
             const newLine = document.createElement("p");
             newLine.setAttribute("data-crawl-text", action.data.text);
-            console.log(action.data.text);
             readLineDiv.innerText = action.data.text;
             linesContainer.prepend(newLine);
             linesContainer.scrollTo(0, 0);
@@ -308,6 +307,7 @@ const executeAction = (action) => {
             return value === action.data.text || key === action.data.readoutKey;
         });
         if ((dialogEntry === null || dialogEntry === void 0 ? void 0 : dialogEntry[0]) && !action.data.skipSpeaking) {
+            console.log(frame, `./audio/en/${dialogEntry[0]}.wav`);
             audioVoice.src = `./audio/en/${dialogEntry[0]}.wav`;
             audioVoice.load();
             audioVoice.currentTime = 0;
@@ -353,9 +353,10 @@ const executeAction = (action) => {
             setTimeout(() => {
                 const id = Math.random();
                 const newCount = action.data.count + 1;
+                console.log({ newCount });
                 addUnqueuedAction({
                     type: "CREATURE_RUN",
-                    delay: 1000 * action.data.count,
+                    delay: Math.min(1000 * action.data.count, 5000),
                     data: {
                         count: newCount,
                         id,
@@ -387,18 +388,20 @@ function attemptToEject(code) {
             action.data.skipSpeaking = true;
         }
     });
-    advanceQueuedAction();
+    if (gameState.queuedActions.length > 0) {
+        advanceQueuedAction();
+    }
     // check for ejection
     if ((_a = gameState.cargo[code]) === null || _a === void 0 ? void 0 : _a.ejected) {
         addTextAction({
-            text: `${dialog["containmentUnit"]} ${dialog[code]}}`,
+            text: `${dialog["containmentUnit"]} ${dialog[code]}`,
             group: ["containmentUnit", code],
         }, "ejectingFailedAlreadyEjected");
         return { result: false, reason: "ejected" };
     }
     gameState.cargo[code] = Object.assign(Object.assign({}, gameState.cargo[code]), { ejected: true });
     addTextAction({
-        text: `${dialog["containmentUnit"]} ${dialog[code]}}`,
+        text: `${dialog["containmentUnit"]} ${dialog[code]}`,
         group: ["containmentUnit", code],
     }, "isEjected", "AnomalyStillActive");
     return { result: true };
@@ -472,12 +475,12 @@ document.onkeydown = function (e) {
                 group: ["containmentUnit", ejectedCargos[0]],
             }, "wasEjectedSingular");
         }
-        else if (ejectedCargos.length > 0) {
+        else if (ejectedCargos.length > 1) {
             addTextAction({
                 text: `${dialog["containmentUnit"]} ${ejectedCargos
                     .map((k) => dialog[k])
                     .join(", ")}`,
-                group: ["containmentUnit", ...ejectedCargos.map((k) => dialog[k])],
+                group: ["containmentUnit", ...ejectedCargos.map((k) => k)],
             }, "wasEjected");
         }
         const heavilyDamagedCargos = Object.entries(gameState.cargo)
@@ -497,10 +500,7 @@ document.onkeydown = function (e) {
                 text: `${dialog["containmentUnit"]} ${heavilyDamagedCargos
                     .map((k) => dialog[k])
                     .join(", ")}`,
-                group: [
-                    "containmentUnit",
-                    ...heavilyDamagedCargos.map((k) => dialog[k]),
-                ],
+                group: ["containmentUnit", ...heavilyDamagedCargos.map((k) => k)],
             }, "wasHeavilyDamaged");
         }
         Object.entries(gameState.cargo)
@@ -520,22 +520,24 @@ document.onkeydown = function (e) {
             }
             return acc;
         }, [])
-            .forEach((keys, damage) => {
+            .forEach((keys, damage, fullArray) => {
             if (keys.length > 1) {
                 keys.splice(keys.length - 1, 0, "and");
                 addTextAction({
                     text: `${dialog["containmentUnit"]} ${keys
                         .map((k) => dialog[k])
                         .join(", ")}`,
-                    group: ["containmentUnit", ...numberStrings(damage)],
+                    group: ["containmentUnit", ...keys.map((k) => k)],
                 }, "wereDamaged", { text: String(damage), group: numberStrings(damage) }, "credits", "forEach");
             }
-            addTextAction({
-                text: `${dialog["containmentUnit"]} ${keys
-                    .map((k) => dialog[k])
-                    .join(", ")}`,
-                group: ["containmentUnit", ...numberStrings(damage)],
-            }, "wasDamaged", { text: String(damage), group: numberStrings(damage) }, "credits");
+            else {
+                addTextAction({
+                    text: `${dialog["containmentUnit"]} ${keys
+                        .map((k) => dialog[k])
+                        .join(", ")}`,
+                    group: ["containmentUnit", ...keys.map((k) => k)],
+                }, "wasDamaged", { text: String(damage), group: numberStrings(damage) }, "credits");
+            }
         });
     }
     if (e.code === "Escape") {
@@ -678,7 +680,6 @@ function updateCreature() {
         gameState.cargo[cargoKey] = Object.assign(Object.assign({}, gameState.cargo[cargoKey]), { damage: Math.min(gameState.cargo[cargoKey].damage + damage, HEAVY_DAMAGE) });
     }
     // add run action if cargo is heavily damage
-    // TODO add run action if ejection was just attempted and failed
     const cargoDamage = (_a = gameState.cargo[cargoKey]) === null || _a === void 0 ? void 0 : _a.damage;
     if (cargoDamage >= HEAVY_DAMAGE && creature.behavior !== "RUN") {
         if (gameState.unqueuedActions.length === 0) {
@@ -792,7 +793,7 @@ const onGameEnd = () => {
     keysVisual.textContent = "";
     addTextAction("missionSuccess", "AnomalyNotActive", "totalFine", { text: String(getScore()), group: numberStrings(getScore()) }, "credits", "thankYou", "resetGame", "fullReadout");
 };
-audioVoice.addEventListener("ended", () => {
+audioVoice.addEventListener("ended", function () {
     advanceQueuedAction();
 });
 setInterval(() => {

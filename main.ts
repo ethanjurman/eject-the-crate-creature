@@ -243,7 +243,7 @@ async function addTextAction(
             id: Math.random(),
             partOfPrevious: itemIndex !== 0,
           },
-          delay,
+          delay: delay === 0 && itemIndex === 0 ? 0 : 20000,
         });
       });
     } else {
@@ -271,7 +271,6 @@ const executeAction = (action: Action) => {
       ) as HTMLDivElement;
       const newLine = document.createElement("p");
       newLine.setAttribute("data-crawl-text", action.data.text);
-      console.log(action.data.text);
       readLineDiv.innerText = action.data.text;
       linesContainer.prepend(newLine);
       linesContainer.scrollTo(0, 0);
@@ -280,6 +279,7 @@ const executeAction = (action: Action) => {
       return value === action.data.text || key === action.data.readoutKey;
     });
     if (dialogEntry?.[0] && !action.data.skipSpeaking) {
+      console.log(frame, `./audio/en/${dialogEntry[0]}.wav`);
       audioVoice.src = `./audio/en/${dialogEntry[0]}.wav`;
       audioVoice.load();
       audioVoice.currentTime = 0;
@@ -332,9 +332,10 @@ const executeAction = (action: Action) => {
       setTimeout(() => {
         const id = Math.random();
         const newCount = action.data.count + 1;
+        console.log({ newCount });
         addUnqueuedAction({
           type: "CREATURE_RUN",
-          delay: 1000 * action.data.count,
+          delay: Math.min(1000 * action.data.count, 5000),
           data: {
             count: newCount,
             id,
@@ -370,13 +371,15 @@ function attemptToEject(code: string) {
       action.data.skipSpeaking = true;
     }
   });
-  advanceQueuedAction();
+  if (gameState.queuedActions.length > 0) {
+    advanceQueuedAction();
+  }
 
   // check for ejection
   if (gameState.cargo[code]?.ejected) {
     addTextAction(
       {
-        text: `${dialog["containmentUnit"]} ${dialog[code]}}`,
+        text: `${dialog["containmentUnit"]} ${dialog[code]}`,
         group: ["containmentUnit", code],
       },
       "ejectingFailedAlreadyEjected"
@@ -389,7 +392,7 @@ function attemptToEject(code: string) {
   };
   addTextAction(
     {
-      text: `${dialog["containmentUnit"]} ${dialog[code]}}`,
+      text: `${dialog["containmentUnit"]} ${dialog[code]}`,
       group: ["containmentUnit", code],
     },
     "isEjected",
@@ -487,13 +490,13 @@ document.onkeydown = function (e) {
         },
         "wasEjectedSingular"
       );
-    } else if (ejectedCargos.length > 0) {
+    } else if (ejectedCargos.length > 1) {
       addTextAction(
         {
           text: `${dialog["containmentUnit"]} ${ejectedCargos
             .map((k) => dialog[k])
             .join(", ")}`,
-          group: ["containmentUnit", ...ejectedCargos.map((k) => dialog[k])],
+          group: ["containmentUnit", ...ejectedCargos.map((k) => k)],
         },
         "wasEjected"
       );
@@ -526,10 +529,7 @@ document.onkeydown = function (e) {
           text: `${dialog["containmentUnit"]} ${heavilyDamagedCargos
             .map((k) => dialog[k])
             .join(", ")}`,
-          group: [
-            "containmentUnit",
-            ...heavilyDamagedCargos.map((k) => dialog[k]),
-          ],
+          group: ["containmentUnit", ...heavilyDamagedCargos.map((k) => k)],
         },
         "wasHeavilyDamaged"
       );
@@ -555,7 +555,7 @@ document.onkeydown = function (e) {
         }
         return acc;
       }, [])
-      .forEach((keys, damage) => {
+      .forEach((keys, damage, fullArray) => {
         if (keys.length > 1) {
           keys.splice(keys.length - 1, 0, "and");
           addTextAction(
@@ -563,25 +563,26 @@ document.onkeydown = function (e) {
               text: `${dialog["containmentUnit"]} ${keys
                 .map((k) => dialog[k])
                 .join(", ")}`,
-              group: ["containmentUnit", ...numberStrings(damage)],
+              group: ["containmentUnit", ...keys.map((k) => k)],
             },
             "wereDamaged",
             { text: String(damage), group: numberStrings(damage) },
             "credits",
             "forEach"
           );
+        } else {
+          addTextAction(
+            {
+              text: `${dialog["containmentUnit"]} ${keys
+                .map((k) => dialog[k])
+                .join(", ")}`,
+              group: ["containmentUnit", ...keys.map((k) => k)],
+            },
+            "wasDamaged",
+            { text: String(damage), group: numberStrings(damage) },
+            "credits"
+          );
         }
-        addTextAction(
-          {
-            text: `${dialog["containmentUnit"]} ${keys
-              .map((k) => dialog[k])
-              .join(", ")}`,
-            group: ["containmentUnit", ...numberStrings(damage)],
-          },
-          "wasDamaged",
-          { text: String(damage), group: numberStrings(damage) },
-          "credits"
-        );
       });
   }
   if (e.code === "Escape") {
@@ -744,7 +745,6 @@ function updateCreature() {
     };
   }
   // add run action if cargo is heavily damage
-  // TODO add run action if ejection was just attempted and failed
   const cargoDamage = gameState.cargo[cargoKey]?.damage;
   if (cargoDamage >= HEAVY_DAMAGE && creature.behavior !== "RUN") {
     if (gameState.unqueuedActions.length === 0) {
@@ -903,7 +903,7 @@ const onGameEnd = () => {
   );
 };
 
-audioVoice.addEventListener("ended", () => {
+audioVoice.addEventListener("ended", function () {
   advanceQueuedAction();
 });
 
