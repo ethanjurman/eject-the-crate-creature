@@ -1,5 +1,13 @@
 <html>
   <head>
+    <!-- fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:ital,wght@0,200..800;1,200..800&family=Atkinson+Hyperlegible+Next:ital,wght@0,200..800;1,200..800&family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
     <!-- favicon -->
     <link
       rel="apple-touch-icon"
@@ -34,12 +42,42 @@
         border-radius: 2px;
       }
       @font-face {
-        font-family: "Atkinson-Hyperlegible Next";
-        src: url("./AtkinsonHyperlegibleNext-VariableFont_wght.ttf");
+        font-family: "Atkinson Hyperlegible Next";
+        src: local("Atkinson Hyperlegible"),
+          url("./AtkinsonHyperlegibleNext-VariableFont_wght.ttf");
       }
       @font-face {
-        font-family: "Atkinson-Hyperlegible Mono";
-        src: url("./AtkinsonHyperlegibleMono-VariableFont_wght.ttf");
+        font-family: "Atkinson Hyperlegible Mono";
+        src: local("Atkinson Hyperlegible Mono"),
+          url("./AtkinsonHyperlegibleMono-VariableFont_wght.ttf");
+      }
+      @font-face {
+        font-family: "Silkscreen";
+        src: local("Silkscreen"), url("./Silkscreen-Regular.ttf");
+      }
+      html {
+        --font-size: 12px;
+        --font-weight: normal;
+      }
+      /* Adjust size based on font-family */
+      html[style*="--dynamic-font: 'Atkinson Hyperlegible Next'"] {
+        --font-size: 13px;
+        --font-weight: normal;
+      }
+
+      html[style*="--dynamic-font: 'Atkinson Hyperlegible Mono'"] {
+        --font-size: 11px;
+        --font-weight: bold;
+      }
+
+      html[style*="--dynamic-font: monospace"] {
+        --font-size: 12px;
+        --font-weight: bold;
+      }
+
+      html[style*="--dynamic-font: 'Silkscreen'"] {
+        --font-size: 11px;
+        --font-weight: normal;
       }
       input {
         accent-color: #9de64e;
@@ -47,10 +85,10 @@
       html * {
         background: #10121c;
         color: #9de64e;
-        font-family: var(--dynamic-font, monospace);
-        font-weight: bolder;
+        font-family: var(--dynamic-font, "monospace");
         text-shadow: #00da27 0 0 var(--font-glow, 4px);
-        font-size: 12px;
+        font-size: var(--font-size);
+        font-weight: var(--font-weight);
       }
       body {
         max-width: 1000px;
@@ -189,7 +227,7 @@
       .cargo-tiny > div {
         border: 2px solid #9de64e;
         padding: 0px;
-        font-size: 10px;
+        font-size: 0.8em;
       }
       .cargo-tiny-ejects {
         display: flex;
@@ -199,7 +237,7 @@
       .cargo-tiny-ejects > div {
         border: 2px solid #9de64e;
         padding: 0px;
-        font-size: 10px;
+        font-size: 0.9em;
       }
       #read-line {
         color: #10121c;
@@ -248,11 +286,12 @@
           <div class="menu-line">
             <label data-crawl-text="Font:"></label>
             <select id="font-selection" name="fonts">
-              <option value="monospace" selected>Monospace</option>
-              <option value="Atkinson-Hyperlegible Next">
+              <option value="monospace">Monospace</option>
+              <option value="'Silkscreen'" selected>Silkscreen</option>
+              <option value="'Atkinson Hyperlegible Next'">
                 Atkinson Hyperlegible Next
               </option>
-              <option value="Atkinson-Hyperlegible Mono">
+              <option value="'Atkinson Hyperlegible Mono'">
                 Atkinson Hyperlegible Mono
               </option>
             </select>
@@ -370,44 +409,44 @@
             aria-label="below is a 4 by 9 grid showing each key on a keyboard, lit up when that key is held down"
             class="cargo-tiny"
           >
-            <div id="key-Digit1">1</div>
-            <div id="key-Digit2">2</div>
-            <div id="key-Digit3">3</div>
-            <div id="key-Digit4">4</div>
-            <div id="key-Digit5">5</div>
-            <div id="key-Digit6">6</div>
-            <div id="key-Digit7">7</div>
-            <div id="key-Digit8">8</div>
-            <div id="key-Digit9">9</div>
-            <div id="key-KeyQ">Q</div>
-            <div id="key-KeyW">W</div>
-            <div id="key-KeyE">E</div>
-            <div id="key-KeyR">R</div>
-            <div id="key-KeyT">T</div>
-            <div id="key-KeyY">Y</div>
-            <div id="key-KeyU">U</div>
-            <div id="key-KeyI">I</div>
-            <div id="key-KeyO">O</div>
-            <div id="key-KeyA">A</div>
-            <div id="key-KeyS">S</div>
-            <div id="key-KeyD">D</div>
-            <div id="key-KeyF">F</div>
-            <div id="key-KeyG">G</div>
-            <div id="key-KeyH">H</div>
-            <div id="key-KeyJ">J</div>
-            <div id="key-KeyK">K</div>
-            <div id="key-KeyL">L</div>
-            <div id="key-KeyZ">Z</div>
-            <div id="key-KeyX">X</div>
-            <div id="key-KeyC">C</div>
-            <div id="key-KeyV">V</div>
-            <div id="key-KeyB">B</div>
-            <div id="key-KeyN">N</div>
-            <div id="key-KeyM">M</div>
-            <div id="key-Comma">,</div>
-            <div id="key-Period">.</div>
+            <div id="key-Digit1" aria-hidden="true">1</div>
+            <div id="key-Digit2" aria-hidden="true">2</div>
+            <div id="key-Digit3" aria-hidden="true">3</div>
+            <div id="key-Digit4" aria-hidden="true">4</div>
+            <div id="key-Digit5" aria-hidden="true">5</div>
+            <div id="key-Digit6" aria-hidden="true">6</div>
+            <div id="key-Digit7" aria-hidden="true">7</div>
+            <div id="key-Digit8" aria-hidden="true">8</div>
+            <div id="key-Digit9" aria-hidden="true">9</div>
+            <div id="key-KeyQ" aria-hidden="true">Q</div>
+            <div id="key-KeyW" aria-hidden="true">W</div>
+            <div id="key-KeyE" aria-hidden="true">E</div>
+            <div id="key-KeyR" aria-hidden="true">R</div>
+            <div id="key-KeyT" aria-hidden="true">T</div>
+            <div id="key-KeyY" aria-hidden="true">Y</div>
+            <div id="key-KeyU" aria-hidden="true">U</div>
+            <div id="key-KeyI" aria-hidden="true">I</div>
+            <div id="key-KeyO" aria-hidden="true">O</div>
+            <div id="key-KeyA" aria-hidden="true">A</div>
+            <div id="key-KeyS" aria-hidden="true">S</div>
+            <div id="key-KeyD" aria-hidden="true">D</div>
+            <div id="key-KeyF" aria-hidden="true">F</div>
+            <div id="key-KeyG" aria-hidden="true">G</div>
+            <div id="key-KeyH" aria-hidden="true">H</div>
+            <div id="key-KeyJ" aria-hidden="true">J</div>
+            <div id="key-KeyK" aria-hidden="true">K</div>
+            <div id="key-KeyL" aria-hidden="true">L</div>
+            <div id="key-KeyZ" aria-hidden="true">Z</div>
+            <div id="key-KeyX" aria-hidden="true">X</div>
+            <div id="key-KeyC" aria-hidden="true">C</div>
+            <div id="key-KeyV" aria-hidden="true">V</div>
+            <div id="key-KeyB" aria-hidden="true">B</div>
+            <div id="key-KeyN" aria-hidden="true">N</div>
+            <div id="key-KeyM" aria-hidden="true">M</div>
+            <div id="key-Comma" aria-hidden="true">,</div>
+            <div id="key-Period" aria-hidden="true">.</div>
           </div>
-          <div class="cargo-tiny-ejects">
+          <div class="cargo-tiny-ejects" aria-hidden="true">
             <div class="key-Shift">EJECTING KEY</div>
             <div id="key-Space">ADVANCE TEXT</div>
             <div class="key-Shift">EJECTING KEY</div>

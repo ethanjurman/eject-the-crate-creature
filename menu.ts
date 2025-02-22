@@ -141,6 +141,7 @@ document.documentElement.style.setProperty(
   "--dynamic-font",
   fontSelection.value
 );
+
 fontGlowSelection.value = saved.glow || "4px";
 document.documentElement.style.setProperty(
   "--font-glow",
