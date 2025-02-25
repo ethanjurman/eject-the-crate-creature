@@ -57,7 +57,7 @@ fetch("./audio/dialog.txt").then((res) => __awaiter(void 0, void 0, void 0, func
 }));
 canvas.width = PX_SIZE * W;
 canvas.height = PX_SIZE * H;
-const containers = [
+const QWERTY_CONTAINERS = [
     [
         "Digit1",
         "Digit2",
@@ -73,10 +73,68 @@ const containers = [
     ["KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK", "KeyL"],
     ["KeyZ", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM", "Comma", "Period"],
 ];
-const containersFlat = containers.reduce((acc, row) => {
+const AZERTY_CONTAINERS = [
+    [
+        "Digit1",
+        "Digit2",
+        "Digit3",
+        "Digit4",
+        "Digit5",
+        "Digit6",
+        "Digit7",
+        "Digit8",
+        "Digit9",
+    ],
+    ["KeyA", "KeyZ", "KeyE", "KeyR", "KeyT", "KeyY", "KeyU", "KeyI", "KeyO"],
+    ["KeyQ", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK", "KeyL"],
+    [
+        "KeyW",
+        "KeyX",
+        "KeyC",
+        "KeyV",
+        "KeyB",
+        "KeyN",
+        "Comma",
+        "Semicolon",
+        "Colon",
+    ],
+];
+const QWERTZ_CONTAINERS = [
+    [
+        "Digit1",
+        "Digit2",
+        "Digit3",
+        "Digit4",
+        "Digit5",
+        "Digit6",
+        "Digit7",
+        "Digit8",
+        "Digit9",
+    ],
+    ["KeyQ", "KeyW", "KeyE", "KeyR", "KeyT", "KeyZ", "KeyU", "KeyI", "KeyO"],
+    ["KeyA", "KeyS", "KeyD", "KeyF", "KeyG", "KeyH", "KeyJ", "KeyK", "KeyL"],
+    ["KeyY", "KeyX", "KeyC", "KeyV", "KeyB", "KeyN", "KeyM", "Comma", "Period"],
+];
+let containers = QWERTY_CONTAINERS;
+let containersFlat = containers.reduce((acc, row) => {
     acc.push(...row);
     return acc;
 }, []);
+const keyboardOption = document.getElementById("keyboard-selection");
+keyboardOption.addEventListener("change", function () {
+    if (this.value === "QWERTY") {
+        // change containers to QWERTY
+        containers = QWERTY_CONTAINERS;
+    }
+    if (this.value === "AZERTY") {
+        // change containers to AZERTY
+        containers = AZERTY_CONTAINERS;
+    }
+    if (this.value === "QWERTZ") {
+        // change containers to QWERTZ
+        containers = QWERTZ_CONTAINERS;
+    }
+});
 function getScore() {
     let score = 0;
     Object.values(gameState.cargo).forEach((cargo) => {
@@ -480,6 +538,7 @@ document.onkeydown = function (e) {
                 }, "wasDamaged", { text: String(damage), group: numberStrings(damage) }, "credits");
             }
         });
+        addTextAction("thankYou");
     }
     if (e.code === "Escape") {
         gameState.state = "MENU";
@@ -687,6 +746,7 @@ function animate() {
 }
 animate();
 function startGame() {
+    keyboardOption.setAttribute("disabled", "true");
     gameState.state = "OPENING";
     gameMenu.setAttribute("style", "display: none");
     gameStartButton.setAttribute("style", "display: none");

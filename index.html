@@ -284,6 +284,14 @@
         <div>
           <div data-crawl-text="SETTINGS:"></div>
           <div class="menu-line">
+            <label data-crawl-text="Keyboard:"></label>
+            <select id="keyboard-selection" name="keyboard">
+              <option value="QWERTY" selected>QWERTY (US)</option>
+              <option value="AZERTY">AZERTY (FR, BE)</option>
+              <option value="QWERTZ">QWERTZ (DE, CE)</option>
+            </select>
+          </div>
+          <div class="menu-line">
             <label data-crawl-text="Font:"></label>
             <select id="font-selection" name="fonts">
               <option value="monospace">Monospace</option>
@@ -396,7 +404,7 @@
         <div>
           <div data-crawl-text="HOW TO PLAY:"></div>
           <p
-            style="min-height: 11em"
+            style="min-height: 13em"
             data-crawl-text="A creature is roaming the spacecraft. Use the keys on your keyboard to activate it's radar, pinpoint the creatures location (the radar will increase both volume and frequency if you are using a radar close to the creature), and then eject it (by pushing both the key associated with the containment unit, and shift). The longer the creature is out causing damage, the more the corporation will fine you, and the less profit you'll make! So hurry up and stop that creature!"
           ></p>
           <p
@@ -405,6 +413,7 @@
           ></p>
           <p data-crawl-text="Push SPACE to advance text to speech audio"></p>
           <div
+            id="cargo-tiny"
             role="application"
             aria-label="below is a 4 by 9 grid showing each key on a keyboard, lit up when that key is held down"
             class="cargo-tiny"
